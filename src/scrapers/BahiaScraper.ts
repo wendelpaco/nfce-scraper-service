@@ -86,6 +86,9 @@ export const BahiaScraper: Scraper = {
       console.warn("⚠️ Não foi possível capturar os totais da nota.", error);
     }
 
-    return { items, ...totalValues };
+    return {
+      totals: totalValues,
+      items,
+    };
   },
 };
