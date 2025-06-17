@@ -11,8 +11,9 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "lint": "eslint 'src/**/*.ts' --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "prettier": "prettier --write 'src/**/*.ts'",
+    "release": "./release.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
