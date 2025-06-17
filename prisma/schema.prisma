@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UrlQueue {
+  id        Int      @id @default(autoincrement())
+  url       String
+  webhookUrl String?
+  status    String   @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR"
+  createdAt DateTime @default(now())
+}
+
+model NotaResult {
+  id        Int      @id @default(autoincrement())
+  url       String
+  webhookUrl String?
+  jsonData  Json
+  createdAt DateTime @default(now())
+}
