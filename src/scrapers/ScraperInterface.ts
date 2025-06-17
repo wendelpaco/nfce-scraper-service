@@ -10,13 +10,17 @@ export interface Item {
   totalPrice: string;
 }
 
-export interface ScrapeResult {
-  items: Item[];
+export interface Totals {
   totalItems?: string;
   totalValue?: string;
   discount?: string;
   amountToPay?: string;
   paymentMethod?: string;
+}
+
+export interface ScrapeResult {
+  items: Item[];
+  totals: Totals;
 }
 
 export interface Scraper {

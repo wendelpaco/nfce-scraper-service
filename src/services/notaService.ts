@@ -16,22 +16,22 @@ export async function processNota(
   const { browser, page } = await openPage(url);
 
   try {
-    const data = await scraper.scrape(page);
+    const { items, totals } = await scraper.scrape(page);
 
     await prisma.notaResult.create({
-      data: { url, webhookUrl, jsonData: JSON.parse(JSON.stringify(data)) },
+      data: {
+        url,
+        webhookUrl,
+        jsonData: JSON.parse(JSON.stringify({ items, totals })),
+      },
     });
 
     const pushedData = {
       status: "DONE",
       url,
       webhookUrl: webhookUrl,
-      items: data.items,
-      totalItems: data.totalItems,
-      totalValue: data.totalValue,
-      discount: data.discount,
-      amountToPay: data.amountToPay,
-      paymentMethod: data.paymentMethod,
+      items,
+      ...totals,
     };
 
     // Se houver webhook, dispara a notificação
