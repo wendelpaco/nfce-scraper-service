@@ -5,7 +5,6 @@
   "description": "A service to scrape NFCE data using Puppeteer and store it in a database with Prisma.",
   "author": "Wendel Santos",
   "license": "MIT",
-  "type": "module",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start": "node dist/server.js",
