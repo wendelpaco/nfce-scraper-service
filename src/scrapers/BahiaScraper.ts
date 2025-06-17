@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 // src/scrapers/BahiaScraper.ts
 import { Page } from "puppeteer";
-import { Scraper } from "./ScraperInterface";
+import { Scraper, Totals } from "./ScraperInterface";
 
 export const BahiaScraper: Scraper = {
   async scrape(page: Page) {
@@ -44,17 +44,6 @@ export const BahiaScraper: Scraper = {
       });
     });
 
-    interface Totals {
-      totalItems?: string;
-      totalValue?: string;
-      discount?: string;
-      amountToPay?: string;
-      paymentMethod?: string;
-      paymentType?: string;
-      paymentAmount?: string;
-      taxInfo?: string;
-    }
-
     let totalValues: Totals = {};
     try {
       totalValues = await page.$$eval("#totalNota > div", (divs) => {
@@ -67,8 +56,6 @@ export const BahiaScraper: Scraper = {
           if (label.includes("Valor total R$")) result.totalValue = value;
           if (label.includes("Descontos R$")) result.discount = value;
           if (label.includes("Valor a pagar R$")) result.amountToPay = value;
-          if (label.includes("Forma de pagamento"))
-            result.paymentMethod = value;
           if (
             label.includes("Cartão de Débito") ||
             label.includes("Cartão de Crédito")
@@ -80,6 +67,15 @@ export const BahiaScraper: Scraper = {
             result.taxInfo = value;
           }
         });
+        if (!result.paymentMethod && result.paymentType) {
+          if (result.paymentType.includes("Crédito"))
+            result.paymentMethod = "Cartão de Crédito";
+          else if (result.paymentType.includes("Débito"))
+            result.paymentMethod = "Cartão de Débito";
+          else if (result.paymentType.includes("Dinheiro"))
+            result.paymentMethod = "Dinheiro";
+          else result.paymentMethod = result.paymentType;
+        }
         return result;
       });
     } catch (error) {

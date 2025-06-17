@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 
 import { processNota } from "../services/notaService";
-import prisma from "../utils/prismaSingleton";
+import prisma from "../utils/prisma";
+import { ScrapeResult } from "../scrapers/ScraperInterface";
 
 export async function queueNota(req: Request, res: Response) {
   const { url, webhookUrl } = req.body;
@@ -45,11 +46,14 @@ export async function getNotaResult(req: Request, res: Response) {
     return;
   }
 
-  // Renomeia o campo jsonData para items na resposta
+  // Ajuste para evitar erro de spread em tipos não-objetos
+  const jsonData = result.jsonData as unknown as ScrapeResult;
+
   res.json({
     id: result.id,
     url: result.url,
     createdAt: result.createdAt,
-    items: result.jsonData,
+    items: jsonData.items,
+    totals: jsonData.totals,
   });
 }

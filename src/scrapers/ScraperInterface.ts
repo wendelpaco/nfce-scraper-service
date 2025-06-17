@@ -23,6 +23,17 @@ export interface ScrapeResult {
   totals: Totals;
 }
 
+export interface Totals {
+  totalItems?: string;
+  totalValue?: string;
+  discount?: string;
+  amountToPay?: string;
+  paymentMethod?: string;
+  paymentType?: string;
+  paymentAmount?: string;
+  taxInfo?: string;
+}
+
 export interface Scraper {
   scrape(page: Page): Promise<ScrapeResult>;
 }

@@ -1,4 +1,3 @@
-
 # NFCe Scraper Service 🧾
 
 Um serviço Node.js + TypeScript para leitura e extração de dados de Notas Fiscais de Consumidor Eletrônica (NFC-e) a partir de URLs dos QR Codes.
@@ -22,7 +21,7 @@ src/
 ├── jobs/               # Scheduler com node-cron
 ├── scrapers/           # Scrapers separados por estado (ex: Bahia, Rio)
 ├── services/           # Lógica de negócio (processamento da nota)
-├── utils/              # Helpers como puppeteerHelper, proxyConfig, prismaSingleton
+├── utils/              # Helpers como puppeteerHelper, proxyConfig, prisma
 ├── app.ts              # Configuração do Express
 ├── server.ts           # Inicialização do servidor
 ```

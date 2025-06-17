@@ -3,7 +3,7 @@
 import axios from "axios";
 import { openPage } from "../utils/puppeteerHelper";
 import { getScraperByCode } from "../scrapers/scraperRegistry";
-import prisma from "../utils/prismaSingleton";
+import prisma from "../utils/prisma";
 
 export async function processNota(
   url: string,

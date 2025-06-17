@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import cron from "node-cron";
 import { processNota } from "../services/notaService";
-import prisma from "../utils/prismaSingleton";
+import prisma from "../utils/prisma";
 
 async function getNextPendingUrlWithRetry(maxRetries = 5, delayMs = 200) {
   let attempt = 0;

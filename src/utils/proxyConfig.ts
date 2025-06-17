@@ -1,5 +1,5 @@
 export const proxyConfig = {
-  protocol: "http",
+  // protocol: "http",
   host: process.env.PROXY_HOST,
   port: parseInt(process.env.PROXY_PORT || "0"),
   auth: {
