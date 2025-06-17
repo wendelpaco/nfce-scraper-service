@@ -30,7 +30,8 @@ export const BahiaScraper: Scraper = {
         const unitPriceRaw = row.querySelector(".RvlUnit")?.textContent ?? "";
         const unitPrice = unitPriceRaw.replace(/[^\d,]/g, "").trim();
 
-        const totalPrice = row.querySelector(".valor")?.textContent?.trim() ?? "";
+        const totalPrice =
+          row.querySelector(".valor")?.textContent?.trim() ?? "";
 
         return {
           title,
