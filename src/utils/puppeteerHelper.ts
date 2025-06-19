@@ -1,31 +1,25 @@
 // src/utils/puppeteerHelper.ts
-import puppeteer, { Browser, Page } from "puppeteer";
-import { proxyConfig } from "./proxyConfig";
+import { Browser, Page } from "puppeteer";
+import { getBrowser } from "./browserInstance";
+// import { proxyConfig } from "./proxyConfig";
 
-// const PROXY = {
-//   host: "170.106.118.114",
-//   port: 2334,
-//   username:
-//     "u46e5208057f505d5-zone-custom-region-br-session-ElUmIOSqq-sessTime-1",
-//   password: "u46e5208057f505d5",
-// };
+const PROXY = {
+  host: "170.106.118.114",
+  port: 2334,
+  username:
+    "u46e5208057f505d5-zone-custom-region-br-session-ElUmIOSqq-sessTime-1",
+  password: "u46e5208057f505d5",
+};
 
 export async function openPage(
   url: string,
 ): Promise<{ browser: Browser; page: Page }> {
-  const browser = await puppeteer.launch({
-    headless: "new", // Use o novo headless
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-    ],
-  });
+  const browser = await getBrowser();
 
   const page = await browser.newPage();
   await page.authenticate({
-    username: proxyConfig.auth.username,
-    password: proxyConfig.auth.password,
+    username: PROXY.username,
+    password: PROXY.password,
   });
 
   await page.setUserAgent(

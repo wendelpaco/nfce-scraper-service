@@ -5,7 +5,7 @@ import { Scraper, Totals } from "./ScraperInterface";
 
 export const BahiaScraper: Scraper = {
   async scrape(page: Page) {
-    await page.waitForSelector("#tabResult tr", { timeout: 15000 });
+    await page.waitForSelector("#tabResult tr", { timeout: 30000 });
 
     const items = await page.$$eval("#tabResult tr", (rows) => {
       return rows.map((row) => {

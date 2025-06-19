@@ -8,17 +8,28 @@ datasource db {
 }
 
 model UrlQueue {
-  id        Int      @id @default(autoincrement())
-  url       String
-  webhookUrl String?
-  status    String   @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR"
-  createdAt DateTime @default(now())
+  id          String      @id @default(uuid())
+  url         String
+  webhookUrl  String?
+  status      String      @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR"
+  bullJobId   String?
+  createdAt   DateTime    @default(now())
+
+  notaResults NotaResult[]
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model NotaResult {
-  id        Int      @id @default(autoincrement())
-  url       String
-  webhookUrl String?
-  jsonData  Json
-  createdAt DateTime @default(now())
+  id          String     @id @default(uuid())
+  url         String
+  webhookUrl  String?
+  jsonData    Json
+  createdAt   DateTime   @default(now())
+
+  urlQueueId  String
+  urlQueue    UrlQueue   @relation(fields: [urlQueueId], references: [id])
+
+  @@index([urlQueueId])
 }

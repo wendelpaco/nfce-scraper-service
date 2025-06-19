@@ -8,6 +8,7 @@ import prisma from "../utils/prisma";
 export async function processNota(
   url: string,
   webhookUrl: string | null = null,
+  requestId: string,
 ) {
   const pParam = url.split("p=")[1]?.split("|")[0];
   if (!pParam) throw new Error("Parâmetro 'p' inválido na URL");
@@ -23,6 +24,11 @@ export async function processNota(
         url,
         webhookUrl,
         jsonData: JSON.parse(JSON.stringify({ items, totals })),
+        urlQueue: {
+          connect: {
+            id: requestId,
+          },
+        },
       },
     });
 
