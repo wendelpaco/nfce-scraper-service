@@ -5,6 +5,8 @@ import express, { RequestHandler } from "express";
 import bodyParser from "body-parser";
 import { createQueueJob, getJobStatus } from "./controllers/queueController";
 
+import { apiTokenAuthMiddleware } from "./middlewares/apiTokenAuthMiddleware";
+
 import { closeBrowser } from "./utils/browserInstance";
 
 const app = express();
@@ -26,7 +28,7 @@ createBullBoard({
 });
 
 app.use("/admin/queues", serverAdapter.getRouter());
-app.post("/queue", createQueueJob as RequestHandler);
+app.post("/queue", apiTokenAuthMiddleware, createQueueJob as RequestHandler);
 app.get("/status/:id", getJobStatus as RequestHandler);
 app.get("/clean", cleanQueue as RequestHandler);
 

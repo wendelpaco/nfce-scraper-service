@@ -10,7 +10,9 @@ type NotaJsonData = {
 };
 
 export async function createQueueJob(req: Request, res: Response) {
-  const { url } = req.body;
+  const { url, webhookUrl } = req.body;
+  // Captura o apiToken injetado pelo middleware de autenticação
+  const apiToken = (req as any).apiToken as { id: string } | undefined;
 
   const stateCode = url.split("p=")[1]?.split("|")[0];
   if (!stateCode) {
@@ -21,7 +23,8 @@ export async function createQueueJob(req: Request, res: Response) {
     data: {
       url,
       status: "PENDING",
-      webhookUrl: req.body.webhookUrl || null,
+      webhookUrl: webhookUrl || null,
+      apiTokenId: apiToken?.id ?? null,
     },
   });
 
@@ -31,7 +34,7 @@ export async function createQueueJob(req: Request, res: Response) {
       url,
       stateCode,
       requestId: urlQueue.id,
-      webhookUrl: req.body.webhookUrl || null,
+      webhookUrl: webhookUrl || null,
     },
     {
       attempts: 5,

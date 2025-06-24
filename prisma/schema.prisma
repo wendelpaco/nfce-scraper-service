@@ -15,6 +15,9 @@ model UrlQueue {
   bullJobId   String?
   createdAt   DateTime    @default(now())
 
+  apiTokenId  String?
+  apiToken    ApiToken?   @relation(fields: [apiTokenId], references: [id])
+
   notaResults NotaResult[]
 
   @@index([status])
@@ -32,4 +35,25 @@ model NotaResult {
   urlQueue    UrlQueue   @relation(fields: [urlQueueId], references: [id])
 
   @@index([urlQueueId])
+}
+
+model ApiUser {
+  id        String      @id @default(uuid())
+  name      String
+  email     String?     @unique
+  createdAt DateTime    @default(now())
+  tokens    ApiToken[]
+}
+
+model ApiToken {
+  id        String   @id @default(uuid())
+  name      String
+  token     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  apiUserId String
+  apiUser   ApiUser  @relation(fields: [apiUserId], references: [id])
+
+  urlQueues UrlQueue[]
 }

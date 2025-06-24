@@ -15,7 +15,8 @@
     "release": "./release.sh",
     "worker": "ts-node src/workers/scraperWorker.ts",
     "stress": "ts-node src/scripts/job-stress-test.ts",
-    "proxy:test": "ts-node src/utils/proxyTester.ts"
+    "proxy:test": "ts-node src/utils/proxyTester.ts",
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.10.1",
