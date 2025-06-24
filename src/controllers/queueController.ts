@@ -12,6 +12,7 @@ type NotaJsonData = {
 export async function createQueueJob(req: Request, res: Response) {
   const { url, webhookUrl } = req.body;
   // Captura o apiToken injetado pelo middleware de autenticação
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const apiToken = (req as any).apiToken as { id: string } | undefined;
 
   const stateCode = url.split("p=")[1]?.split("|")[0];
