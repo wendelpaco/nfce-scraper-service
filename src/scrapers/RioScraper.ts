@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+// src/scrapers/RioScraper.ts
 import { Page } from "puppeteer";
 import { Scraper, Totals } from "./ScraperInterface";
 
@@ -47,7 +48,8 @@ export const RioScraper: Scraper = {
     try {
       totalValues = await page.$$eval("#totalNota > div", (divs) => {
         const result: Totals = {};
-        divs.forEach((div) => {
+
+        divs.forEach((div, index) => {
           const label = div.querySelector("label")?.textContent?.trim() ?? "";
           const value = div.querySelector("span")?.textContent?.trim() ?? "";
 
@@ -55,33 +57,69 @@ export const RioScraper: Scraper = {
           if (label.includes("Valor total R$")) result.totalValue = value;
           if (label.includes("Descontos R$")) result.discount = value;
           if (label.includes("Valor a pagar R$")) result.amountToPay = value;
-          if (
-            label.includes("Cartão de Débito") ||
-            label.includes("Cartão de Crédito")
-          ) {
-            result.paymentType = label;
-            result.paymentAmount = value;
-          }
-          if (label.includes("Informação dos Tributos Totais Incidentes")) {
+          if (label.includes("Informação dos Tributos Totais Incidentes"))
             result.taxInfo = value;
+
+          if (label.includes("Forma de pagamento:")) {
+            const nextDiv = divs[index + 1];
+            if (nextDiv) {
+              const paymentLabel =
+                nextDiv.querySelector("label")?.textContent?.trim() ?? "";
+              const paymentValue =
+                nextDiv.querySelector("span")?.textContent?.trim() ?? "";
+
+              if (paymentLabel && paymentValue) {
+                result.paymentMethod = paymentLabel;
+                result.paymentAmount = paymentValue;
+              }
+            }
           }
         });
-        if (!result.paymentMethod && result.paymentType) {
-          if (result.paymentType.includes("Crédito"))
-            result.paymentMethod = "Cartão de Crédito";
-          else if (result.paymentType.includes("Débito"))
-            result.paymentMethod = "Cartão de Débito";
-          else if (result.paymentType.includes("Dinheiro"))
-            result.paymentMethod = "Dinheiro";
-          else result.paymentMethod = result.paymentType;
-        }
+
         return result;
       });
     } catch (error) {
-      console.warn("⚠️ Não foi possível capturar os totais da nota.", error);
+      console.warn(
+        "⚠️ Não foi possível capturar os totais da nota (RIO).",
+        error,
+      );
+    }
+
+    // Bloco para capturar informações extras da seção informativa
+    let extraInfo: Record<string, string> = {};
+    try {
+      extraInfo = await page.$eval(
+        ".ui-collapsible-content.ui-body-inherit ul.ui-listview li",
+        (element) => {
+          const text = element.textContent || "";
+          const result: Record<string, string> = {};
+
+          const numberMatch = text.match(/Número:\s*(\d+)/);
+          if (numberMatch) result.numero = numberMatch[1];
+
+          const serieMatch = text.match(/Série:\s*(\d+)/);
+          if (serieMatch) result.serie = serieMatch[1];
+
+          const emissaoMatch = text.match(/Emissão:\s*([^\n]+)/);
+          if (emissaoMatch) result.dataEmissao = emissaoMatch[1].trim();
+
+          const protocoloMatch = text.match(
+            /Protocolo de Autorização:\s*(\d+)/,
+          );
+          if (protocoloMatch) result.protocoloAutorizacao = protocoloMatch[1];
+
+          return result;
+        },
+      );
+    } catch (error) {
+      console.warn(
+        "⚠️ Não foi possível capturar informações extras da nota.",
+        error,
+      );
     }
 
     return {
+      extraInfo,
       totals: totalValues,
       items,
     };

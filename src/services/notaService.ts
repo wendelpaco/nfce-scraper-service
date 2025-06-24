@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 // src/services/notaService.ts
 import axios from "axios";
-import { openPage } from "../utils/puppeteerHelper";
 import { getScraperByCode } from "../scrapers/scraperRegistry";
 import prisma from "../utils/prisma";
+import { openPage } from "../utils/browserInstance";
 
 export async function processNota(
   url: string,

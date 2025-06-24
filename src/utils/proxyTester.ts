@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 // src/utils/proxyTester.ts
-import { openPage } from "./puppeteerHelper";
+
+import { openPage } from "./browserInstance";
 
 async function testProxyIp(): Promise<void> {
   try {

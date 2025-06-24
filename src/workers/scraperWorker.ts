@@ -3,7 +3,7 @@ import { Worker } from "bullmq";
 import { connection } from "../jobs/redisConnection";
 import { getScraperByCode } from "../scrapers/scraperRegistry";
 import prisma from "../utils/prisma";
-import { openPage } from "../utils/puppeteerHelper";
+import { openPage } from "../utils/browserInstance";
 import { EventEmitter } from "events";
 
 EventEmitter.defaultMaxListeners = 50;
@@ -17,6 +17,9 @@ export const scraperWorker = new Worker(
       const scraper = getScraperByCode(stateCode);
       const { page } = await openPage(url);
 
+      // const pageText = await page.evaluate(() => document.body.innerText);
+      // console.log(pageText);
+
       const result = await scraper.scrape(page);
 
       await page.close();
@@ -29,6 +32,7 @@ export const scraperWorker = new Worker(
         status: "DONE",
         url,
         webhookUrl: urlQueueRecord?.webhookUrl || null,
+        ...result.extraInfo,
         items: result.items,
         ...result.totals,
       };
@@ -37,7 +41,11 @@ export const scraperWorker = new Worker(
         data: {
           url,
           jsonData: JSON.parse(
-            JSON.stringify({ items: result.items, totals: result.totals }),
+            JSON.stringify({
+              extraInfo: result.extraInfo,
+              items: result.items,
+              totals: result.totals,
+            }),
           ),
           webhookUrl: urlQueueRecord?.webhookUrl || null,
           urlQueueId: requestId,
@@ -77,9 +85,10 @@ export const scraperWorker = new Worker(
   },
   {
     connection,
-    concurrency: 5,
-    lockDuration: 120000, // 2 minutos de lock por job
-    stalledInterval: 30000, // Check de jobs stalled a cada 30 segundos
+    concurrency: 2, // Limite de 3 jobs simultâneos
+    lockDuration: 300000, // 5 minutos em ms
+    stalledInterval: 60000, // 1 minuto em ms
+    maxStalledCount: 3, // até 3 detecções antes de falhar
   },
 );
 

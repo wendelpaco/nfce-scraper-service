@@ -1,0 +1,55 @@
+services:
+  app:
+    build: .
+    container_name: nfce_app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@postgres:5432/nfce_scraper
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    command: yarn dev
+
+  worker:
+    build: .
+    command: yarn worker
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@postgres:5432/nfce_scraper
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    # Exemplo de scale com 2 réplicas (efetivo apenas com Docker Swarm)
+    deploy:
+      replicas: 2
+
+  redis:
+    image: redis:7
+    container_name: nfce_redis
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:15
+    container_name: nfce_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nfce_scraper
+    ports:
+      - "5432:5432"
+
+  bullboard:
+    image: ghcr.io/felixmosh/bull-board:latest
+    container_name: nfce_bullboard
+    ports:
+      - "3001:3000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis

@@ -9,8 +9,10 @@ Um serviço Node.js + TypeScript para leitura e extração de dados de Notas Fis
 - Express
 - Prisma + PostgreSQL
 - Puppeteer
-- node-cron (scheduler)
+- BullMQ + Redis (fila de jobs)
 - Axios (para webhooks)
+- BullBoard (Dashboard de jobs)
+- Docker + Docker Compose
 - Eslint + Prettier (padronização de código)
 
 ## 📂 Estrutura do Projeto
@@ -18,48 +20,70 @@ Um serviço Node.js + TypeScript para leitura e extração de dados de Notas Fis
 ```
 src/
 ├── controllers/        # Controllers da API
-├── jobs/               # Scheduler com node-cron
+├── jobs/               # Configuração das filas BullMQ
 ├── scrapers/           # Scrapers separados por estado (ex: Bahia, Rio)
-├── services/           # Lógica de negócio (processamento da nota)
+├── services/           # Lógica de negócio
 ├── utils/              # Helpers como puppeteerHelper, proxyConfig, prisma
+├── workers/            # Workers BullMQ (ex: scraperWorker.ts)
 ├── app.ts              # Configuração do Express
 ├── server.ts           # Inicialização do servidor
 ```
 
 ## 📌 Como rodar o projeto
 
-1. **Instalar as dependências**
+### Modo local (desenvolvimento rápido)
+
+1. Instalar dependências:
 
 ```bash
 yarn
 ```
 
-2. **Configurar o banco de dados**
-
-Crie um banco PostgreSQL e configure o `.env`:
+2. Configurar o banco de dados no `.env`:
 
 ```
 DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
-3. **Rodar as migrações**
+3. Rodar as migrações Prisma:
 
 ```bash
 npx prisma migrate dev
 ```
 
-4. **Iniciar em modo desenvolvimento**
+4. Iniciar a API:
 
 ```bash
 yarn dev
 ```
 
-5. **Build para produção**
+5. Rodar o worker:
 
 ```bash
-yarn build
-yarn start
+yarn worker
 ```
+
+---
+
+### Modo produção com Docker
+
+```bash
+docker-compose up --build
+```
+
+Após subir, rode a migration dentro do container:
+
+```bash
+docker-compose exec app yarn prisma migrate dev
+```
+
+A API ficará disponível em:  
+http://localhost:3000
+
+O BullBoard (dashboard da fila):  
+http://localhost:3001
 
 ---
 
@@ -67,22 +91,20 @@ yarn start
 
 ### POST `/queue`
 
-Agenda uma URL de NFC-e para processamento.
+Enfileira uma URL para processamento assíncrono.
 
 **Body:**
 
 ```json
 {
   "url": "URL_DA_NFE",
-  "replyTo": "https://seu-webhook.site/opcional"
+  "webhookUrl": "https://seu-webhook.site/opcional"
 }
 ```
 
----
-
 ### POST `/run`
 
-Executa a leitura da NFC-e diretamente (modo manual).
+Executa a leitura da NFC-e diretamente (modo imediato e sem passar pela fila).
 
 **Body:**
 
@@ -92,24 +114,18 @@ Executa a leitura da NFC-e diretamente (modo manual).
 }
 ```
 
----
-
 ### GET `/result/:id`
 
 Consulta o resultado de uma nota processada.
 
----
+### GET `/status/:id`
 
-## ⚙️ Scheduler (node-cron)
-
-O job é executado a cada 30 segundos. Ele busca URLs pendentes no banco (`status: PENDING`), processa e salva o resultado.
-
----
+Consulta o status de um job da fila (ex: PENDING, DONE, ERROR).
 
 ## ✅ Roadmap futuro (ideias)
 
+- ✅ Fila de processamento com Redis e BullMQ
 - Suporte a mais estados (SP, MG, etc)
-- Fila de processamento com Redis ou RabbitMQ
 - Melhorias no controle de proxies
 - Dashboard de status de scraping
 - Retry automático com backoff
@@ -127,6 +143,9 @@ yarn format
 
 # Build
 yarn build
+
+# Iniciar worker
+yarn worker
 ```
 
 ---

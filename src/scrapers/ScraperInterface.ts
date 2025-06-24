@@ -16,22 +16,22 @@ export interface Totals {
   discount?: string;
   amountToPay?: string;
   paymentMethod?: string;
+  paymentType?: string;
+  paymentAmount?: string;
+  taxInfo?: string;
+}
+
+export interface ExtraInfo {
+  numero?: string;
+  serie?: string;
+  dataEmissao?: string;
+  protocoloAutorizacao?: string;
 }
 
 export interface ScrapeResult {
   items: Item[];
   totals: Totals;
-}
-
-export interface Totals {
-  totalItems?: string;
-  totalValue?: string;
-  discount?: string;
-  amountToPay?: string;
-  paymentMethod?: string;
-  paymentType?: string;
-  paymentAmount?: string;
-  taxInfo?: string;
+  extraInfo?: ExtraInfo;
 }
 
 export interface Scraper {
