@@ -15,7 +15,7 @@ import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import { scraperQueue } from "./jobs/scraperQueue";
-import { cleanQueue } from "./controllers/cleanJob";
+import { cleanQueue } from "./controllers/cleanController";
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/admin/queues");

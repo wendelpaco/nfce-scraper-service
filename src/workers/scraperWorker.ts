@@ -32,9 +32,9 @@ export const scraperWorker = new Worker(
         status: "DONE",
         url,
         webhookUrl: urlQueueRecord?.webhookUrl || null,
-        ...result.extraInfo,
+        metadata: result.metadata,
         items: result.items,
-        ...result.totals,
+        totals: result.totals,
       };
 
       await prisma.notaResult.create({
@@ -42,9 +42,9 @@ export const scraperWorker = new Worker(
           url,
           jsonData: JSON.parse(
             JSON.stringify({
-              extraInfo: result.extraInfo,
-              items: result.items,
-              totals: result.totals,
+              metadata: pushedData.metadata,
+              items: pushedData.items,
+              totals: pushedData.totals,
             }),
           ),
           webhookUrl: urlQueueRecord?.webhookUrl || null,

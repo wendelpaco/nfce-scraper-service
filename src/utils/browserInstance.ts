@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 import puppeteer, { Browser, Page } from "puppeteer";
 
@@ -14,10 +15,17 @@ const PROXY = {
 export async function openPage(
   url: string,
 ): Promise<{ browser: Browser; page: Page }> {
+  const randomUserAgents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+  ];
+  const selectedUserAgent =
+    randomUserAgents[Math.floor(Math.random() * randomUserAgents.length)];
+
   if (!browser) {
     browser = await puppeteer.launch({
       headless: "new",
-      // headless: true,
       ignoreHTTPSErrors: true,
       devtools: false,
       args: [
@@ -26,11 +34,11 @@ export async function openPage(
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--single-process",
+        "--disable-features=site-per-process",
       ],
-      timeout: 60000,
+      timeout: 180000,
+      protocolTimeout: 180000,
       defaultViewport: { width: 1280, height: 800 },
-      protocolTimeout: 120000,
       slowMo: 50,
     });
 
@@ -43,20 +51,21 @@ export async function openPage(
     password: PROXY.password,
   });
 
-  await page.setUserAgent(
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
-  );
+  await page.setUserAgent(selectedUserAgent);
+  console.log(`🎭 User-Agent usado: ${selectedUserAgent}`);
 
-  await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
-
-  // try {
-  //   await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 });
-  // } catch (err) {
-  //   console.warn(
-  //     "⚠️ Timeout esperando o redirecionamento pós-Recaptcha. Seguindo mesmo assim...",
-  //     err,
-  //   );
-  // }
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+  } catch (err: any) {
+    console.error("❌ Erro no page.goto:", err);
+    if (err.message.includes("browser has disconnected")) {
+      await closeBrowser();
+      throw new Error(
+        "Browser crashed or was closed unexpectedly during navigation.",
+      );
+    }
+    throw err;
+  }
 
   return { browser, page };
 }

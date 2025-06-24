@@ -119,7 +119,7 @@ export const RioScraper: Scraper = {
     }
 
     return {
-      extraInfo,
+      metadata: extraInfo,
       totals: totalValues,
       items,
     };

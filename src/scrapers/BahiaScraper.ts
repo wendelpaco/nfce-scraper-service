@@ -48,9 +48,8 @@ export const BahiaScraper: Scraper = {
     try {
       totalValues = await page.$$eval("#totalNota > div", (divs) => {
         const result: Totals = {};
-        let captureNextAsPayment = false;
 
-        divs.forEach((div) => {
+        divs.forEach((div, index) => {
           const label = div.querySelector("label")?.textContent?.trim() ?? "";
           const value = div.querySelector("span")?.textContent?.trim() ?? "";
 
@@ -61,21 +60,19 @@ export const BahiaScraper: Scraper = {
           if (label.includes("Informação dos Tributos Totais Incidentes"))
             result.taxInfo = value;
 
-          if (label.includes("Forma de pagamento:"))
-            captureNextAsPayment = true;
-          else if (captureNextAsPayment && label.match(/^\d+\s*-/)) {
-            result.paymentType = label;
-            result.paymentAmount = value;
+          if (label.includes("Forma de pagamento:")) {
+            const nextDiv = divs[index + 1];
+            if (nextDiv) {
+              const paymentLabel =
+                nextDiv.querySelector("label")?.textContent?.trim() ?? "";
+              const paymentValue =
+                nextDiv.querySelector("span")?.textContent?.trim() ?? "";
 
-            if (label.includes("Crédito"))
-              result.paymentMethod = "Cartão de Crédito";
-            else if (label.includes("Débito"))
-              result.paymentMethod = "Cartão de Débito";
-            else if (label.toLowerCase().includes("dinheiro"))
-              result.paymentMethod = "Dinheiro";
-            else result.paymentMethod = label;
-
-            captureNextAsPayment = false;
+              if (paymentLabel && paymentValue) {
+                result.paymentMethod = paymentLabel;
+                result.paymentAmount = paymentValue;
+              }
+            }
           }
         });
 
@@ -83,12 +80,48 @@ export const BahiaScraper: Scraper = {
       });
     } catch (error) {
       console.warn(
-        "⚠️ Não foi possível capturar os totais da nota (Bahia).",
+        "⚠️ Não foi possível capturar os totais da nota (BAHIA).",
+        error,
+      );
+    }
+
+    // Bloco para capturar informações extras da seção informativa
+    let extraInfo: Record<string, string> = {};
+    try {
+      extraInfo = await page.$eval(
+        ".ui-collapsible-content.ui-body-inherit ul.ui-listview li",
+        (element) => {
+          const text = element.textContent || "";
+          const result: Record<string, string> = {};
+
+          const numberMatch = text.match(/Número:\s*(\d+)/);
+          if (numberMatch) result.numero = numberMatch[1];
+
+          const serieMatch = text.match(/Série:\s*(\d+)/);
+          if (serieMatch) result.serie = serieMatch[1];
+
+          const emissaoMatch = text.match(
+            /Emissão:\s*(\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}-\d{2}:\d{2})/,
+          );
+          if (emissaoMatch) result.dataEmissao = emissaoMatch[1].trim();
+
+          const protocoloMatch = text.match(
+            /Protocolo de Autorização:\s*(\d+)/,
+          );
+          if (protocoloMatch) result.protocoloAutorizacao = protocoloMatch[1];
+
+          return result;
+        },
+      );
+    } catch (error) {
+      console.warn(
+        "⚠️ Não foi possível capturar informações extras da nota.",
         error,
       );
     }
 
     return {
+      metadata: extraInfo,
       totals: totalValues,
       items,
     };

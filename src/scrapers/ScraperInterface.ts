@@ -21,7 +21,7 @@ export interface Totals {
   taxInfo?: string;
 }
 
-export interface ExtraInfo {
+export interface Metadata {
   numero?: string;
   serie?: string;
   dataEmissao?: string;
@@ -31,7 +31,7 @@ export interface ExtraInfo {
 export interface ScrapeResult {
   items: Item[];
   totals: Totals;
-  extraInfo?: ExtraInfo;
+  metadata?: Metadata;
 }
 
 export interface Scraper {
