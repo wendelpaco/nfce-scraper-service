@@ -34,15 +34,25 @@ const urls = [
   "https://consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=33250633304981001272651110002091401007360100|2|1|3|7B573E6DF4CF81217A50C4239931549463FD1CAA",
 ];
 
+const AUTH_TOKEN = "8def1147-fc55-4f1a-85fd-4ee356d550d7"; // seu token
+
 async function queueJobs() {
   for (const url of urls) {
     console.log(`⏳ Enfileirando jobs para URL: ${url}`);
     for (let i = 0; i < 1; i++) {
       try {
-        const response = await axios.post("http://localhost:3000/queue", {
-          url,
-          webhookUrl: "https://attractive-woman-75.webhook.cool",
-        });
+        const response = await axios.post(
+          "http://localhost:3000/queue",
+          {
+            url,
+            webhookUrl: "https://attractive-woman-75.webhook.cool",
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`,
+            },
+          },
+        );
         console.log(`✅ Job ${i + 1} para essa URL:`, response.data);
       } catch (error) {
         console.error(
@@ -51,6 +61,9 @@ async function queueJobs() {
         );
       }
     }
+
+    // Adiciona intervalo de 3 segundos entre cada URL
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 
   console.log("🏁 Todos os jobs enviados.");

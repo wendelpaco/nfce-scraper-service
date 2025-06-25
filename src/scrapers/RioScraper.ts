@@ -88,32 +88,42 @@ export const RioScraper: Scraper = {
     // Bloco para capturar informações extras da seção informativa
     let extraInfo: Record<string, string> = {};
     try {
-      extraInfo = await page.$eval(
+      const hasExtraInfo = await page.$(
         ".ui-collapsible-content.ui-body-inherit ul.ui-listview li",
-        (element) => {
-          const text = element.textContent || "";
-          const result: Record<string, string> = {};
-
-          const numberMatch = text.match(/Número:\s*(\d+)/);
-          if (numberMatch) result.numero = numberMatch[1];
-
-          const serieMatch = text.match(/Série:\s*(\d+)/);
-          if (serieMatch) result.serie = serieMatch[1];
-
-          const emissaoMatch = text.match(/Emissão:\s*([^\n]+)/);
-          if (emissaoMatch) result.dataEmissao = emissaoMatch[1].trim();
-
-          const protocoloMatch = text.match(
-            /Protocolo de Autorização:\s*(\d+)/,
-          );
-          if (protocoloMatch) result.protocoloAutorizacao = protocoloMatch[1];
-
-          return result;
-        },
       );
+
+      if (hasExtraInfo) {
+        extraInfo = await page.$eval(
+          ".ui-collapsible-content.ui-body-inherit ul.ui-listview li",
+          (element) => {
+            const text = element.textContent || "";
+            const result: Record<string, string> = {};
+
+            const numberMatch = text.match(/Número:\s*(\d+)/);
+            if (numberMatch) result.numero = numberMatch[1];
+
+            const serieMatch = text.match(/Série:\s*(\d+)/);
+            if (serieMatch) result.serie = serieMatch[1];
+
+            const emissaoMatch = text.match(/Emissão:\s*([^\n]+)/);
+            if (emissaoMatch) result.dataEmissao = emissaoMatch[1].trim();
+
+            const protocoloMatch = text.match(
+              /Protocolo de Autorização:\s*(\d+)/,
+            );
+            if (protocoloMatch) result.protocoloAutorizacao = protocoloMatch[1];
+
+            return result;
+          },
+        );
+      } else {
+        console.warn(
+          "⚠️ Bloco extraInfo não encontrado na página (pode ser normal para o RJ)",
+        );
+      }
     } catch (error) {
       console.warn(
-        "⚠️ Não foi possível capturar informações extras da nota.",
+        "⚠️ Erro ao tentar capturar informações extras da nota (extraInfo block).",
         error,
       );
     }

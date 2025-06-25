@@ -25,7 +25,8 @@ export async function openPage(
 
   if (!browser) {
     browser = await puppeteer.launch({
-      headless: "new",
+      // headless: "new",
+      headless: false,
       ignoreHTTPSErrors: true,
       devtools: false,
       args: [
@@ -76,4 +77,9 @@ export async function closeBrowser(): Promise<void> {
     browser = null;
     console.log("✅ Browser Puppeteer fechado.");
   }
+}
+
+export async function getAllPages() {
+  if (!browser) return [];
+  return await browser.pages();
 }
