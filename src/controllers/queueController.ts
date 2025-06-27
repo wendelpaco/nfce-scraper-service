@@ -1,13 +1,20 @@
 /* eslint-disable no-console */
 import { Request, Response } from "express";
-import { scraperQueue } from "../jobs/scraperQueue";
 import prisma from "../utils/prisma";
+import { normalizeNotaUrl } from "../utils";
+import { getScraperByCode } from "../scrapers/scraperRegistry";
+import { scraperQueue } from "../jobs/queue";
 
-type NotaJsonData = {
-  metadata: unknown;
-  items: unknown;
-  totals: unknown;
-};
+interface NotaJsonData {
+  metadata: {
+    numero?: unknown;
+    serie?: unknown;
+    dataEmissao?: unknown;
+    protocoloAutorizacao?: unknown;
+    items: unknown;
+    totals: unknown;
+  };
+}
 
 export async function createQueueJob(req: Request, res: Response) {
   const { url, webhookUrl } = req.body;
@@ -20,9 +27,12 @@ export async function createQueueJob(req: Request, res: Response) {
     return res.status(400).json({ error: "Parâmetro 'p' inválido na URL" });
   }
 
+  const normalizedUrl = normalizeNotaUrl(url, stateCode);
+
   const urlQueue = await prisma.urlQueue.create({
     data: {
-      url,
+      url: url,
+      urlFinal: normalizedUrl,
       status: "PENDING",
       webhookUrl: webhookUrl || null,
       apiTokenId: apiToken?.id ?? null,
@@ -30,18 +40,19 @@ export async function createQueueJob(req: Request, res: Response) {
   });
 
   const job = await scraperQueue.add(
-    "scrape",
+    `PROCESSAMENTO DE NOTAS - ESTADO [${getScraperByCode(stateCode).stateCode}]`,
     {
-      url,
+      url: normalizedUrl,
       stateCode,
-      requestId: urlQueue.id,
+      jobId: urlQueue.id,
       webhookUrl: webhookUrl || null,
     },
     {
+      delay: 25000, // Adiciona um delay inicial de 5 segundos
       attempts: 5,
       backoff: {
         type: "exponential",
-        delay: 30000, // 30 segundos base para backoff exponencial
+        delay: 10000,
       },
     },
   );
@@ -59,24 +70,29 @@ export async function getJobStatus(req: Request, res: Response): Promise<void> {
 
   try {
     const urlQueue = await prisma.urlQueue.findUnique({
-      where: { id: jobId },
+      where: { id: jobId, apiTokenId: (req as any).apiToken?.id },
       include: { notaResults: true },
     });
 
     if (!urlQueue) {
-      res.status(404).json({ error: "Job não encontrado" });
+      res.status(404).json({ status: "Job não encontrado" });
       return;
     }
 
     let metadata = null;
-    let items = null;
-    let totals = null;
 
     if (urlQueue.notaResults.length > 0) {
-      const jsonData = urlQueue.notaResults[0].jsonData as NotaJsonData;
-      items = jsonData?.items ?? null;
-      totals = jsonData?.totals ?? null;
-      metadata = jsonData?.metadata ?? null;
+      const jsonData = urlQueue.notaResults[0]
+        .jsonData as unknown as NotaJsonData;
+
+      metadata = {
+        numero: jsonData?.metadata?.numero,
+        serie: jsonData?.metadata?.serie,
+        dataEmissao: jsonData?.metadata?.dataEmissao,
+        protocoloAutorizacao: jsonData?.metadata?.protocoloAutorizacao,
+        items: jsonData?.metadata?.items,
+        totals: jsonData?.metadata?.totals,
+      };
     }
 
     res.json({
@@ -96,8 +112,6 @@ export async function getJobStatus(req: Request, res: Response): Promise<void> {
           ? urlQueue.notaResults[0].urlQueueId
           : null,
       metadata,
-      items,
-      totals,
     });
   } catch (error) {
     console.log(error);

@@ -8,15 +8,17 @@ datasource db {
 }
 
 model UrlQueue {
-  id          String      @id @default(uuid())
-  url         String
-  webhookUrl  String?
-  status      String      @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR"
-  bullJobId   String?
-  createdAt   DateTime    @default(now())
+  id               String   @id @default(uuid())
+  url              String
+  urlFinal         String?
+  webhookUrl       String?
+  status           String   @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR" | "BLOCKED" | "INVALID"
+  lastErrorMessage String?
+  bullJobId        String?
+  createdAt        DateTime @default(now())
 
-  apiTokenId  String?
-  apiToken    ApiToken?   @relation(fields: [apiTokenId], references: [id])
+  apiTokenId String?
+  apiToken   ApiToken? @relation(fields: [apiTokenId], references: [id])
 
   notaResults NotaResult[]
 
@@ -25,23 +27,23 @@ model UrlQueue {
 }
 
 model NotaResult {
-  id          String     @id @default(uuid())
-  url         String
-  webhookUrl  String?
-  jsonData    Json
-  createdAt   DateTime   @default(now())
+  id         String   @id @default(uuid())
+  url        String
+  webhookUrl String?
+  jsonData   Json
+  createdAt  DateTime @default(now())
 
-  urlQueueId  String
-  urlQueue    UrlQueue   @relation(fields: [urlQueueId], references: [id])
+  urlQueueId String
+  urlQueue   UrlQueue @relation(fields: [urlQueueId], references: [id])
 
   @@index([urlQueueId])
 }
 
 model ApiUser {
-  id        String      @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
-  email     String?     @unique
-  createdAt DateTime    @default(now())
+  email     String?    @unique
+  createdAt DateTime   @default(now())
   tokens    ApiToken[]
 }
 
@@ -53,7 +55,7 @@ model ApiToken {
   createdAt DateTime @default(now())
 
   apiUserId String
-  apiUser   ApiUser  @relation(fields: [apiUserId], references: [id])
+  apiUser   ApiUser @relation(fields: [apiUserId], references: [id])
 
   urlQueues UrlQueue[]
 }

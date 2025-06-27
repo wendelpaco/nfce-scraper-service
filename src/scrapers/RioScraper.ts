@@ -4,6 +4,7 @@ import { Page } from "puppeteer";
 import { Scraper, Totals } from "./ScraperInterface";
 
 export const RioScraper: Scraper = {
+  stateCode: "RJ",
   async scrape(page: Page) {
     await page.waitForSelector("#tabResult tr", { timeout: 30000 });
 

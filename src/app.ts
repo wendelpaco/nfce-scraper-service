@@ -9,15 +9,17 @@ import { apiTokenAuthMiddleware } from "./middlewares/apiTokenAuthMiddleware";
 
 import { closeBrowser } from "./utils/browserInstance";
 
-const app = express();
-
-app.use(bodyParser.json());
-
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
-import { scraperQueue } from "./jobs/scraperQueue";
 import { cleanQueue } from "./controllers/cleanController";
+import { scraperQueue } from "./jobs/queue";
+
+import basicAuth from "express-basic-auth";
+
+const app = express();
+
+app.use(bodyParser.json());
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/admin/queues");
@@ -27,9 +29,19 @@ createBullBoard({
   serverAdapter,
 });
 
+app.use(
+  "/admin/queues",
+  basicAuth({
+    users: { admin: process.env.BULLBOARD_PASSWORD || "admin" },
+    challenge: true,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+    unauthorizedResponse: (req: any) => "🚫 Acesso não autorizado.",
+  }),
+);
+
 app.use("/admin/queues", serverAdapter.getRouter());
 app.post("/queue", apiTokenAuthMiddleware, createQueueJob as RequestHandler);
-app.get("/status/:id", getJobStatus as RequestHandler);
+app.get("/status/:id", apiTokenAuthMiddleware, getJobStatus as RequestHandler);
 app.get("/clean", cleanQueue as RequestHandler);
 
 // app.post("/run", runNota as RequestHandler);

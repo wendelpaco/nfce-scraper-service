@@ -35,5 +35,6 @@ export interface ScrapeResult {
 }
 
 export interface Scraper {
+  stateCode: string; // ex: "BA", "RJ"
   scrape(page: Page): Promise<ScrapeResult>;
 }

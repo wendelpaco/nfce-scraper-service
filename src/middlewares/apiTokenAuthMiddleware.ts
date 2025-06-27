@@ -22,7 +22,7 @@ export const apiTokenAuthMiddleware = async (
       : authHeader.trim();
 
     const apiToken = await prisma.apiToken.findUnique({
-      where: { token },
+      where: { token, active: true },
     });
 
     if (!apiToken) {

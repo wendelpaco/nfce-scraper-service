@@ -4,6 +4,7 @@ import { Page } from "puppeteer";
 import { Scraper, Totals } from "./ScraperInterface";
 
 export const BahiaScraper: Scraper = {
+  stateCode: "BA",
   async scrape(page: Page) {
     await page.waitForSelector("#tabResult tr", { timeout: 30000 });
 

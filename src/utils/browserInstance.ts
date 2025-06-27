@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
-import puppeteer, { Browser, Page } from "puppeteer";
+import puppeteer, { Browser, Page } from "../core/puppeteerPlugins";
+import { logger } from "./logger";
 
 let browser: Browser | null = null;
 
@@ -25,8 +25,8 @@ export async function openPage(
 
   if (!browser) {
     browser = await puppeteer.launch({
-      // headless: "new",
-      headless: false,
+      headless: "new",
+      // headless: false,
       ignoreHTTPSErrors: true,
       devtools: false,
       args: [
@@ -40,10 +40,10 @@ export async function openPage(
       timeout: 180000,
       protocolTimeout: 180000,
       defaultViewport: { width: 1280, height: 800 },
-      slowMo: 50,
+      // slowMo: 50,
     });
 
-    console.log("✅ Browser Puppeteer iniciado.");
+    logger("✅ Browser Puppeteer iniciado.");
   }
 
   const page = await browser.newPage();
@@ -53,10 +53,11 @@ export async function openPage(
   });
 
   await page.setUserAgent(selectedUserAgent);
-  console.log(`🎭 User-Agent usado: ${selectedUserAgent}`);
+  logger(`🎭 User-Agent usado: ${selectedUserAgent}`);
 
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     console.error("❌ Erro no page.goto:", err);
     if (err.message.includes("browser has disconnected")) {
@@ -75,7 +76,7 @@ export async function closeBrowser(): Promise<void> {
   if (browser) {
     await browser.close();
     browser = null;
-    console.log("✅ Browser Puppeteer fechado.");
+    logger("✅ Browser Puppeteer fechado.");
   }
 }
 
