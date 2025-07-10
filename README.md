@@ -53,13 +53,21 @@ REDIS_PORT=6379
 npx prisma migrate dev
 ```
 
-4. Iniciar a API:
+4. Buildar o projeto:
 
 ```bash
-yarn dev
+yarn build
 ```
 
-5. Rodar o worker:
+> **Nota:** Os arquivos compilados ficam em `dist/src/`. O comando de start já está ajustado para isso.
+
+5. Iniciar a API (produção):
+
+```bash
+yarn start
+```
+
+6. Rodar o worker:
 
 ```bash
 yarn worker
@@ -122,6 +130,59 @@ Consulta o resultado de uma nota processada.
 
 Consulta o status de um job da fila (ex: PENDING, DONE, ERROR).
 
+## 🛠️ Scripts úteis
+
+```bash
+# Rodar o ESLint
+yarn lint
+
+# Rodar o Prettier
+yarn prettier
+
+# Buildar o projeto
+yarn build
+
+# Iniciar a API (produção)
+yarn start
+
+# Iniciar worker BullMQ
+yarn worker
+
+# Teste de stress geral
+yarn stress
+
+# Teste de stress RJ
+yarn stress-rj
+
+# Testar proxies
+yarn proxy:test
+
+# Popular banco com dados de exemplo
+yarn seed
+
+# Gerar relatório de stats
+yarn report
+
+# Gerenciar jobs na fila
+yarn manage-jobs
+
+# Reprocessar jobs bloqueados
+yarn reprocess-blocked
+
+# Analisar e limpar inválidos
+yarn analyze-invalid
+```
+
+---
+
+## ℹ️ Observações importantes
+
+- O BullMQ Dashboard (BullBoard) permite visualizar jobs com erro. Agora, quando um job falha, o resultado inclui um campo `errorMessage` detalhando o motivo do erro, facilitando o diagnóstico diretamente pelo dashboard.
+- O comando de start foi ajustado para rodar `node dist/src/server.js` (atenção à estrutura de build do TypeScript).
+- O projeto utiliza BullMQ para filas e workers, com integração ao BullBoard para monitoramento visual.
+
+---
+
 ## ✅ Roadmap futuro (ideias)
 
 - ✅ Fila de processamento com Redis e BullMQ
@@ -129,24 +190,6 @@ Consulta o status de um job da fila (ex: PENDING, DONE, ERROR).
 - Melhorias no controle de proxies
 - Dashboard de status de scraping
 - Retry automático com backoff
-
----
-
-## ✅ Scripts úteis
-
-```bash
-# Rodar o ESLint
-yarn lint
-
-# Rodar o Prettier
-yarn format
-
-# Build
-yarn build
-
-# Iniciar worker
-yarn worker
-```
 
 ---
 
