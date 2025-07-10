@@ -1,9 +1,9 @@
-/* eslint-disable no-console */
 // src/services/notaService.ts
 import axios from "axios";
 import { getScraperByCode } from "../scrapers/scraperRegistry";
 import prisma from "../utils/prisma";
 import { openPage } from "../utils/browserInstance";
+import { logger } from "../utils/logger";
 
 export async function processNota(
   url: string,
@@ -44,9 +44,9 @@ export async function processNota(
     if (webhookUrl) {
       try {
         await axios.post(webhookUrl, pushedData);
-        console.log(`✅ Notificação enviada para webhook: ${webhookUrl}`);
+        logger.info(`✅ Notificação enviada para webhook: ${webhookUrl}`);
       } catch (err) {
-        console.error(`❌ Falha ao notificar webhook: ${webhookUrl}`, err);
+        logger.error(`❌ Falha ao notificar webhook: ${webhookUrl}`, err);
       }
     }
 

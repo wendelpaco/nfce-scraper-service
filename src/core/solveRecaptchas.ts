@@ -1,5 +1,6 @@
 import { Page } from "../core/puppeteerPlugins";
-/* eslint-disable no-console */
+import { logger } from "../utils/logger";
+
 export async function solvePageCaptchas(page: Page): Promise<{
   solved: boolean;
   error?: string;
@@ -9,27 +10,27 @@ export async function solvePageCaptchas(page: Page): Promise<{
     await page.waitForTimeout(3000); // ajustável conforme necessário
 
     const result = await page.solveRecaptchas();
-    console.log("🔍 Resultado solveRecaptchas:", result);
+    logger.info("🔍 Resultado solveRecaptchas:", result);
 
     if (result.error) {
-      console.warn("⚠️ Erro ao resolver captcha:", result.error);
+      logger.warn("⚠️ Erro ao resolver captcha:", result.error);
       return { solved: false, error: result.error };
     }
 
     if (result.solved.length > 0) {
-      console.log(
+      logger.info(
         `✅ ${result.solved.length} reCAPTCHA(s) resolvido(s) com sucesso.`,
       );
       return { solved: true };
     } else {
-      console.log("ℹ️ Nenhum reCAPTCHA detectado na página.");
+      logger.info("ℹ️ Nenhum reCAPTCHA detectado na página.");
       return { solved: false };
     }
   } catch (err: any) {
-    console.warn("⚠️ Erro inesperado ao tentar resolver captcha:", err.message);
+    logger.warn("⚠️ Erro inesperado ao tentar resolver captcha:", err.message);
     return { solved: false, error: err.message };
   } finally {
-    console.log(
+    logger.info(
       "📄 HTML após tentativa de resolver captcha:",
       await page.content(),
     );

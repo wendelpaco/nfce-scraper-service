@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
-
 import { PrismaClient } from "@prisma/client";
+import { logger } from "../utils/logger";
 
 const prisma = new PrismaClient();
 
@@ -51,19 +51,78 @@ async function main() {
     take: 5,
   });
 
-  console.log("--- Estatísticas Gerais ---\n");
+  // --- ANÁLISE DE PERFORMANCE ---
+  const performanceStats = await prisma.urlQueue.findMany({
+    where: {
+      processingStartedAt: { not: null },
+      processingEndedAt: { not: null },
+      status: "DONE",
+    },
+    select: {
+      processingStartedAt: true,
+      processingEndedAt: true,
+      status: true,
+    },
+  });
 
-  console.log("Status das filas:");
+  const processingTimes = performanceStats.map((stat) => {
+    const start = stat.processingStartedAt!.getTime();
+    const end = stat.processingEndedAt!.getTime();
+    return end - start;
+  });
+
+  const avgProcessingTime =
+    processingTimes.length > 0
+      ? processingTimes.reduce((sum, time) => sum + time, 0) /
+        processingTimes.length
+      : 0;
+
+  const minProcessingTime =
+    processingTimes.length > 0 ? Math.min(...processingTimes) : 0;
+  const maxProcessingTime =
+    processingTimes.length > 0 ? Math.max(...processingTimes) : 0;
+
+  // Jobs em processamento (não finalizados)
+  const jobsInProgress = await prisma.urlQueue.count({
+    where: {
+      processingStartedAt: { not: null },
+      processingEndedAt: null,
+    },
+  });
+
+  // Jobs pendentes (não iniciados)
+  const jobsPending = await prisma.urlQueue.count({
+    where: {
+      processingStartedAt: null,
+      status: "PENDING",
+    },
+  });
+
+  console.log("=== ANÁLISE DE STATUS DOS PROCESSAMENTOS ===\n");
+
+  console.log("📊 Status das filas:");
   statusCounts.forEach(({ status, _count }) => {
     console.log(`- ${status}: ${_count}`);
   });
 
-  console.log("\nTop 5 mensagens de erro mais comuns:");
+  console.log("\n⏱️ Métricas de Performance:");
+  console.log(
+    `- Tempo médio de processamento: ${(avgProcessingTime / 1000).toFixed(2)}s`,
+  );
+  console.log(`- Tempo mínimo: ${(minProcessingTime / 1000).toFixed(2)}s`);
+  console.log(`- Tempo máximo: ${(maxProcessingTime / 1000).toFixed(2)}s`);
+  console.log(
+    `- Total de jobs processados com tempo: ${processingTimes.length}`,
+  );
+  console.log(`- Jobs em processamento: ${jobsInProgress}`);
+  console.log(`- Jobs pendentes: ${jobsPending}`);
+
+  console.log("\n🚨 Top 5 mensagens de erro mais comuns:");
   topErrors.forEach(({ lastErrorMessage, _count }) => {
     console.log(`- "${lastErrorMessage}": ${_count}`);
   });
 
-  console.log("\nTop 5 tokens com mais erros:");
+  console.log("\n👤 Top 5 tokens com mais erros:");
   for (const { apiTokenId, _count } of topFailingTokens) {
     const token = await prisma.apiToken.findUnique({
       where: { id: apiTokenId! },
@@ -81,7 +140,7 @@ async function main() {
   }
 
   // --- Estatísticas Adicionais ---
-  console.log("\n--- Estatísticas Adicionais ---");
+  console.log("\n=== ESTATÍSTICAS ADICIONAIS ===");
 
   const totalDone = await prisma.urlQueue.count({
     where: { status: "DONE" },
@@ -104,15 +163,15 @@ async function main() {
   const percent = (count: number) =>
     ((count / totalAll) * 100).toFixed(1) + "%";
 
-  console.log(`Total DONE: ${totalDone}`);
-  console.log(`Total com ERRO: ${totalError} (${percent(totalError)})`);
-  console.log(`Total BLOCKED: ${totalBlocked} (${percent(totalBlocked)})`);
-  console.log(`Total INVALID: ${totalInvalid} (${percent(totalInvalid)})`);
+  console.log(`✅ Total DONE: ${totalDone}`);
+  console.log(`❌ Total com ERRO: ${totalError} (${percent(totalError)})`);
+  console.log(`⏳ Total BLOCKED: ${totalBlocked} (${percent(totalBlocked)})`);
+  console.log(`🚫 Total INVALID: ${totalInvalid} (${percent(totalInvalid)})`);
 
   const totalNotas = await prisma.notaResult.count();
   const avgNotasPorUrl =
     totalDone > 0 ? (totalNotas / totalDone).toFixed(2) : "0";
-  console.log(`\nMédia de notas por URL (DONE): ${avgNotasPorUrl}`);
+  console.log(`\n📄 Média de notas por URL (DONE): ${avgNotasPorUrl}`);
 
   const topUrls = await prisma.notaResult.groupBy({
     by: ["url"],
@@ -127,9 +186,35 @@ async function main() {
     take: 5,
   });
 
-  console.log("\nTop 5 URLs mais processadas:");
+  console.log("\n🔗 Top 5 URLs mais processadas:");
   topUrls.forEach(({ url, _count }) => {
     console.log(`- ${url} (${_count.url} resultados)`);
+  });
+
+  // --- ANÁLISE DE TENDÊNCIAS ---
+  console.log("\n=== ANÁLISE DE TENDÊNCIAS ===");
+
+  const recentJobs = await prisma.urlQueue.findMany({
+    where: {
+      createdAt: {
+        gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Últimas 24h
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+
+  const recentStatusCounts = recentJobs.reduce(
+    (acc, job) => {
+      acc[job.status] = (acc[job.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  console.log("📈 Jobs das últimas 24h:");
+  Object.entries(recentStatusCounts).forEach(([status, count]) => {
+    console.log(`- ${status}: ${count}`);
   });
 
   // Gera arquivo CSV com registros com status "ERROR" ou "INVALID"
@@ -146,33 +231,42 @@ async function main() {
       status: true,
       bullJobId: true,
       url: true,
-      // urlFinal: true,
       lastErrorMessage: true,
+      processingStartedAt: true,
+      processingEndedAt: true,
     },
   });
 
-  const csvHeader = "status,bullJobId,url,lastErrorMessage\n";
-  const csvRows = failedRecords.map((r) =>
-    [
+  const csvHeader =
+    "status,bullJobId,url,lastErrorMessage,processingStartedAt,processingEndedAt,durationMs\n";
+  const csvRows = failedRecords.map((r) => {
+    const durationMs =
+      r.processingStartedAt && r.processingEndedAt
+        ? r.processingEndedAt.getTime() - r.processingStartedAt.getTime()
+        : "";
+
+    return [
       r.status,
       r.bullJobId ?? "",
       r.url,
-      // r.urlFinal ?? "",
       (r.lastErrorMessage ?? "").replace(/\n/g, " "),
+      r.processingStartedAt?.toISOString() ?? "",
+      r.processingEndedAt?.toISOString() ?? "",
+      durationMs,
     ]
       .map((field) => `"${String(field).replace(/"/g, '""')}"`)
-      .join(","),
-  );
+      .join(",");
+  });
 
   await fs.writeFile(path, csvHeader + csvRows.join("\n"));
   console.log(
-    `\nArquivo "${path}" gerado com ${failedRecords.length} registros com erro ou inválidos.`,
+    `\n📁 Arquivo "${path}" gerado com ${failedRecords.length} registros com erro ou inválidos.`,
   );
 
   await prisma.$disconnect();
 }
 
 main().catch((e) => {
-  console.error(e);
+  logger.error(e);
   process.exit(1);
 });

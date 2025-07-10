@@ -8,14 +8,18 @@ datasource db {
 }
 
 model UrlQueue {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   url              String
   urlFinal         String?
   webhookUrl       String?
-  status           String   @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR" | "BLOCKED" | "INVALID"
+  status           String    @default("PENDING") // "PENDING" | "PROCESSING" | "DONE" | "ERROR" | "BLOCKED" | "INVALID"
   lastErrorMessage String?
   bullJobId        String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  
+  // Campos para tracking de tempo de processamento
+  processingStartedAt DateTime?
+  processingEndedAt   DateTime?
 
   apiTokenId String?
   apiToken   ApiToken? @relation(fields: [apiTokenId], references: [id])

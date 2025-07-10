@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Worker } from "bullmq";
 import { getScraperByCode } from "../scrapers/scraperRegistry";
 import prisma from "../utils/prisma";
@@ -8,6 +7,7 @@ import { EventEmitter } from "events";
 import { captchaQueue, redisConfig } from "../jobs/queue";
 import { logger } from "../utils/logger";
 import axios from "axios";
+import { TargetWithCreationTime } from "../types/browser";
 
 EventEmitter.defaultMaxListeners = 50;
 
@@ -27,19 +27,14 @@ function classifyErrorOrContent(error: unknown, pageText?: string): JobStatus {
     contentStr.includes("secretaria de estado de fazenda do rio de janeiro") ||
     contentStr.includes("bloqueia acessos provenientes desses endereços ip") ||
     errorStr.includes("blocked") ||
-    errorStr.includes("captcha")
-  ) {
-    return "BLOCKED";
-  }
-
-  if (
+    errorStr.includes("captcha") ||
     contentStr.includes("não foi possível validar o acesso") ||
     contentStr.includes("rejeição: consumo indevido") ||
     contentStr.includes("656-rejeição: consumo indevido.") ||
     errorStr.includes("invalid") ||
     errorStr.includes("não encontrado")
   ) {
-    return "INVALID";
+    return "BLOCKED";
   }
 
   if (error && errorStr.trim().length > 0) return "ERROR";
@@ -55,23 +50,31 @@ export const scraperWorker = new Worker(
     const urlQueueRecord = await prisma.urlQueue.findFirst({
       where: {
         id: jobId,
-        status: { in: ["PENDING", "ERROR"] },
+        status: { in: ["PENDING", "ERROR", "BLOCKED", ""] },
       },
     });
 
     if (!urlQueueRecord) {
-      logger(`⚠️ Job ${job.id} não está pendente. Ignorando processamento.`);
+      logger.warn(
+        `⚠️ Job ${job.id} não está pendente. Ignorando processamento.`,
+      );
       return;
     }
 
     try {
+      // Marca início do processamento
+      await prisma.urlQueue.update({
+        where: { id: jobId },
+        data: { processingStartedAt: new Date() },
+      });
+
       const scraper = getScraperByCode(stateCode);
       const { page } = await openPage(url);
 
       await page
         .waitForSelector("#tabResult tr", { timeout: 30000 })
         .catch(() => {
-          logger(
+          logger.debug(
             "[DEBUG] Timeout esperando seletor #tabResult tr. Pode não ter carregado.",
           );
         });
@@ -84,22 +87,22 @@ export const scraperWorker = new Worker(
         );
 
       if (recaptchaFrame) {
-        logger(
+        logger.info(
           "🎯 reCAPTCHA detectado via iframe na página. Tentando resolver...",
         );
         const captchaResult = await solvePageCaptchas(page);
         if (captchaResult.error) {
-          logger(`⚠️ Erro ao resolver captcha: ${captchaResult.error}`);
+          logger.error(`⚠️ Erro ao resolver captcha: ${captchaResult.error}`);
         } else if (captchaResult.solved) {
-          logger("✅ Captcha resolvido com sucesso.");
+          logger.info("✅ Captcha resolvido com sucesso.");
         } else {
-          logger("⚠️ reCAPTCHA detectado, mas não foi possível resolver.");
+          logger.warn("⚠️ reCAPTCHA detectado, mas não foi possível resolver.");
         }
       } else {
-        logger("ℹ️ Nenhum reCAPTCHA detectado na página via iframe.");
+        logger.info("ℹ️ Nenhum reCAPTCHA detectado na página via iframe.");
       }
 
-      logger(
+      logger.debug(
         `[DEBUG] Aguardando seletor #tabResult tr para garantir carregamento da página...`,
       );
       let pageText = "";
@@ -112,26 +115,26 @@ export const scraperWorker = new Worker(
           return document.body?.innerText || "";
         });
       } catch (err) {
-        logger("⚠️ Erro ao extrair innerText do body:", err);
+        logger.error("⚠️ Erro ao extrair innerText do body:", err);
         pageText = "";
       }
-      logger(
+      logger.debug(
         "[DEBUG] Texto extraído da página:",
         pageText.substring(0, 80).replace(/\n/g, " "),
       );
 
       // Classifica o conteúdo da página antes de tentar resolver captchas
       const preCheckStatus = classifyErrorOrContent(null, pageText);
-      logger(`[DEBUG] Status pré-check da página: ${preCheckStatus}`);
+      logger.debug(`[DEBUG] Status pré-check da página: ${preCheckStatus}`);
 
       if (preCheckStatus === "DONE") {
         const hasTable = await page.$("#tabResult tr");
         if (hasTable) {
-          logger(
+          logger.info(
             `✅ Página carregada com sucesso para job ${job.id}. Nota fiscal parece válida.`,
           );
         } else {
-          logger(
+          logger.error(
             `⚠️ Elemento esperado (#tabResult tr) não encontrado mesmo após status DONE. Marcando como ERROR.`,
           );
           await prisma.urlQueue.update({
@@ -146,50 +149,50 @@ export const scraperWorker = new Worker(
         }
       }
 
-      if (preCheckStatus === "INVALID") {
-        const lowerText = pageText.toLowerCase();
+      // if (preCheckStatus === "INVALID") {
+      //   const lowerText = pageText.toLowerCase();
 
-        // Se for erro que exige resolver captcha, encaminha para captchaQueue
-        if (
-          lowerText.includes("não foi possível validar o acesso") ||
-          lowerText.includes("erro no captcha")
-        ) {
-          logger(`➡️ Redirecionando job ${job.id} para fila de CAPTCHA.`);
+      //   // Se for erro que exige resolver captcha, encaminha para captchaQueue
+      //   if (
+      //     lowerText.includes("não foi possível validar o acesso") ||
+      //     lowerText.includes("erro no captcha")
+      //   ) {
+      //     logger.info(`➡️ Redirecionando job ${job.id} para fila de CAPTCHA.`);
 
-          await captchaQueue.add("captchaSolver", {
-            url,
-            jobId,
-            originalStateCode: stateCode,
-          });
+      //     await captchaQueue.add("captchaSolver", {
+      //       url,
+      //       jobId,
+      //       originalStateCode: stateCode,
+      //     });
 
-          await prisma.urlQueue.update({
-            where: { id: jobId },
-            data: {
-              status: "WAITING_CAPTCHA",
-              lastErrorMessage: `${pageText} - Aguardando resolução alternativa via CAPTCHA.`,
-            },
-          });
+      //     await prisma.urlQueue.update({
+      //       where: { id: jobId },
+      //       data: {
+      //         status: "WAITING_CAPTCHA",
+      //         lastErrorMessage: `${pageText} - Aguardando resolução alternativa via CAPTCHA.`,
+      //       },
+      //     });
 
-          await page.close();
-          return;
-        }
+      //     await page.close();
+      //     return;
+      //   }
 
-        logger(
-          `🚫 Conteúdo inválido detectado para job ${job.id}. Removendo da fila.`,
-        );
-        await prisma.urlQueue.update({
-          where: { id: jobId },
-          data: {
-            status: "INVALID",
-            lastErrorMessage: `${pageText} - Conteúdo inválido detectado na página.`,
-          },
-        });
-        await page.close();
-        return;
-      }
+      //   logger.warn(
+      //     `🚫 Conteúdo inválido detectado para job ${job.id}. Tentando novamente até esgotar tentativas.`,
+      //   );
+      //   await prisma.urlQueue.update({
+      //     where: { id: jobId },
+      //     data: {
+      //       // Não atualize o status para INVALID aqui!
+      //       lastErrorMessage: `${pageText} - Conteúdo inválido detectado na página.`,
+      //     },
+      //   });
+      //   await page.close();
+      //   throw new Error("Conteúdo inválido detectado na página."); // Permite retry automático
+      // }
 
       if (preCheckStatus === "BLOCKED") {
-        logger(
+        logger.warn(
           `⏳ Bloqueio temporário detectado para job ${job.id}. Reagendando para reprocessamento.`,
         );
 
@@ -213,12 +216,22 @@ export const scraperWorker = new Worker(
 
       await page.close();
 
-      if (!urlQueueRecord || urlQueueRecord.status !== "PENDING") {
-        logger(
+      if (
+        !urlQueueRecord ||
+        !["PENDING", "BLOCKED"].includes(urlQueueRecord.status)
+      ) {
+        logger.warn(
           `⚠️ Ignorando job ${job.id} com status não pendente ou inexistente.`,
         );
         return;
       }
+
+      // Debug: verificar se os campos estão sendo capturados
+      logger.debug(`[DEBUG] Dados do scraper para job ${job.id}:`, {
+        metadata: result.metadata,
+        itemsCount: result.items.length,
+        totals: result.totals,
+      });
 
       const metadata = {
         ...result.metadata,
@@ -244,30 +257,38 @@ export const scraperWorker = new Worker(
 
       await prisma.urlQueue.update({
         where: { id: jobId },
-        data: { status: "DONE", lastErrorMessage: null },
+        data: {
+          status: "DONE",
+          lastErrorMessage: null,
+          processingEndedAt: new Date(),
+        },
       });
 
       if (urlQueueRecord?.webhookUrl) {
-        logger(`🚀 Tentando enviar webhook para: ${urlQueueRecord.webhookUrl}`);
+        logger.info(
+          `🚀 Tentando enviar webhook para: ${urlQueueRecord.webhookUrl}`,
+        );
         try {
           const response = await axios.post(
             urlQueueRecord.webhookUrl!,
             pushedData,
           );
-          logger(`✅ Webhook enviado com sucesso! Status: ${response.status}`);
+          logger.info(
+            `✅ Webhook enviado com sucesso! Status: ${response.status}`,
+          );
         } catch (err) {
-          console.error(
+          logger.error(
             `❌ Falha ao enviar webhook para: ${urlQueueRecord.webhookUrl}`,
             err,
           );
         }
       } else {
-        console.warn(`⚠️ Nenhum webhookUrl configurado para job ${job.id}`);
+        logger.warn(`⚠️ Nenhum webhookUrl configurado para job ${job.id}`);
       }
 
       return pushedData;
     } catch (error) {
-      console.error(`❌ Job ${job.id} falhou:`, error);
+      logger.error(`❌ Job ${job.id} falhou:`, error);
 
       // Tenta avaliar se o erro indica bloqueio temporário ou definitivo
       let pageText = "";
@@ -284,20 +305,20 @@ export const scraperWorker = new Worker(
                 .toLowerCase()
                 .includes("bloqueia acessos provenientes desses endereços ip")
             ) {
-              logger(
+              logger.warn(
                 `🔴 Detecção de bloqueio de IP para job ${job.id}, fechando a aba...`,
               );
               await page.close();
             }
           } catch (innerError) {
-            logger(
+            logger.error(
               `⚠️ Não foi possível analisar ou fechar a página:`,
               innerError,
             );
             try {
               await page.close();
             } catch (closeError) {
-              logger(`⚠️ Erro ao fechar página após falha:`, closeError);
+              logger.error(`⚠️ Erro ao fechar página após falha:`, closeError);
             }
           }
         }
@@ -307,7 +328,7 @@ export const scraperWorker = new Worker(
           pageText = await pages[0].evaluate(() => document.body.innerText);
         }
       } catch (pageCloseError) {
-        console.error(
+        logger.error(
           `❌ Erro ao tentar obter páginas após falha no job ${job.id}:`,
           pageCloseError,
         );
@@ -323,6 +344,7 @@ export const scraperWorker = new Worker(
             error instanceof Error
               ? `${pageText} - ${error.message}`
               : `${pageText} - ${String(error)}`,
+          processingEndedAt: new Date(),
         },
       });
 
@@ -333,26 +355,25 @@ export const scraperWorker = new Worker(
 
         for (const page of pages) {
           try {
-            const target = page.target();
-            const creationTime = (target as any)._targetInfo
-              ?.targetCreationTime;
+            const target = page.target() as TargetWithCreationTime;
+            const creationTime = target._targetInfo?.targetCreationTime;
             const creationTimestamp = creationTime
               ? new Date(creationTime).getTime()
               : null;
             const duration = creationTimestamp ? now - creationTimestamp : null;
 
             if (duration !== null && duration > 2 * 60 * 1000) {
-              logger(
+              logger.warn(
                 `🧹 Página aberta há mais de 2 minutos detectada. Fechando...`,
               );
               await page.close();
             }
           } catch (err) {
-            logger(`⚠️ Erro ao tentar fechar página antiga:`, err);
+            logger.error(`⚠️ Erro ao tentar fechar página antiga:`, err);
           }
         }
       } catch (cleanupError) {
-        console.error(
+        logger.error(
           `⚠️ Erro ao tentar realizar limpeza de abas antigas:`,
           cleanupError,
         );
@@ -363,7 +384,7 @@ export const scraperWorker = new Worker(
   },
   {
     connection: redisConfig,
-    concurrency: parseInt(process.env.WORKER_CONCURRENCY || "2", 10),
+    concurrency: parseInt(process.env.WORKER_CONCURRENCY || "1", 10),
     lockDuration: parseInt(process.env.WORKER_LOCK_DURATION || "600000", 10),
     stalledInterval: parseInt(
       process.env.WORKER_STALLED_INTERVAL || "120000",
@@ -374,9 +395,9 @@ export const scraperWorker = new Worker(
 );
 
 scraperWorker.on("completed", (job) => {
-  logger(`✅ Job ${job.id} finalizado`);
+  logger.info(`✅ Job ${job.id} finalizado`);
 });
 
 scraperWorker.on("failed", (job, err) => {
-  console.error(`❌ Job ${job?.id} falhou:`, err);
+  logger.error(`❌ Job ${job?.id} falhou:`, err);
 });

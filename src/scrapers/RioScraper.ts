@@ -129,6 +129,41 @@ export const RioScraper: Scraper = {
       );
     }
 
+    // Captura informações da empresa (nome e CNPJ)
+    try {
+      const empresaInfo = await page.$eval(".txtCenter", (element) => {
+        const txtTopo =
+          element.querySelector(".txtTopo")?.textContent?.trim() || "";
+        const textElements = element.querySelectorAll(".text");
+
+        let cnpj = "";
+        for (const textEl of textElements) {
+          const text = textEl.textContent?.trim() || "";
+          const cnpjMatch = text.match(
+            /CNPJ:\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/,
+          );
+          if (cnpjMatch) {
+            cnpj = cnpjMatch[1];
+            break;
+          }
+        }
+
+        return {
+          nomeEmpresa: txtTopo,
+          cnpj: cnpj,
+        };
+      });
+
+      // Adiciona informações da empresa ao metadata
+      extraInfo = {
+        ...extraInfo,
+        nomeEmpresa: empresaInfo.nomeEmpresa,
+        cnpj: empresaInfo.cnpj,
+      };
+    } catch (error) {
+      console.warn("⚠️ Erro ao tentar capturar informações da empresa.", error);
+    }
+
     return {
       metadata: extraInfo,
       totals: totalValues,

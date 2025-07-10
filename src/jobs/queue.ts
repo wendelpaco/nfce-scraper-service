@@ -17,7 +17,11 @@ export const captchaQueue = new Queue("captchaQueue", {
   connection: redisConfig,
 });
 // Tratamento de erro para fila principal
-scraperQueue.on("error", (err) => logger("Erro na fila scraperQueue:", err));
+scraperQueue.on("error", (err) =>
+  logger.error("Erro na fila scraperQueue:", err),
+);
 
 // Tratamento de erro para fila de retry
-captchaQueue.on("error", (err) => logger("Erro na fila captchaQueue:", err));
+captchaQueue.on("error", (err) =>
+  logger.error("Erro na fila captchaQueue:", err),
+);

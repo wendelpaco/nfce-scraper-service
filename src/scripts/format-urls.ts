@@ -3,38 +3,39 @@ import {
   formatLinesWithQuotes,
   formatLinesWithQuotesAndComma,
 } from "../utils";
+import { logger } from "../utils/logger";
 
 async function main() {
-  console.log("=== Formatando URLs com aspas duplas e vírgula ===\n");
+  logger.info("=== Formatando URLs com aspas duplas e vírgula ===\n");
 
   try {
     // Processa o arquivo de URLs filtradas
     const urls = await processFileWithPParam("./src/urls-filtradas.txt");
 
-    console.log(`📁 Processando ${urls.length} URLs do arquivo...\n`);
+    logger.info(`📁 Processando ${urls.length} URLs do arquivo...\n`);
 
     // Formatação 1: Todas as linhas com vírgula
-    console.log("1. Formatação com vírgula em todas as linhas:");
+    logger.info("1. Formatação com vírgula em todas as linhas:");
     const urlsComVirgula = formatLinesWithQuotes(urls);
 
     // Mostra as primeiras 5 linhas como exemplo
     urlsComVirgula.slice(0, 5).forEach((url, index) => {
-      console.log(`  ${index + 1}. ${url}`);
+      logger.info(`  ${index + 1}. ${url}`);
     });
-    console.log("  ...\n");
+    logger.info("  ...\n");
 
     // Formatação 2: Última linha sem vírgula (para arrays JavaScript)
-    console.log("2. Formatação para arrays (última linha sem vírgula):");
+    logger.info("2. Formatação para arrays (última linha sem vírgula):");
     const urlsParaArray = formatLinesWithQuotesAndComma(urls);
 
     // Mostra as primeiras 5 linhas como exemplo
     urlsParaArray.slice(0, 5).forEach((url, index) => {
-      console.log(`  ${index + 1}. ${url}`);
+      logger.info(`  ${index + 1}. ${url}`);
     });
-    console.log("  ...\n");
+    logger.info("  ...\n");
 
     // Salva os resultados em arquivos
-    console.log("3. Salvando arquivos formatados...");
+    logger.info("3. Salvando arquivos formatados...");
 
     const fs = require("fs").promises;
 
@@ -56,17 +57,17 @@ async function main() {
     const arrayCompleto = `const urls = [\n${urlsParaArray.map((url) => `  ${url}`).join("\n")}\n];`;
     await fs.writeFile("./src/urls-array-completo.js", arrayCompleto, "utf-8");
 
-    console.log("✅ Arquivos salvos:");
-    console.log("  - src/urls-com-virgula.txt (todas com vírgula)");
-    console.log("  - src/urls-para-array.txt (última sem vírgula)");
-    console.log("  - src/urls-array-completo.js (array JavaScript completo)");
+    logger.info("✅ Arquivos salvos:");
+    logger.info("  - src/urls-com-virgula.txt (todas com vírgula)");
+    logger.info("  - src/urls-para-array.txt (última sem vírgula)");
+    logger.info("  - src/urls-array-completo.js (array JavaScript completo)");
 
-    console.log(`\n📊 Resumo:`);
-    console.log(`  - Total de URLs processadas: ${urls.length}`);
-    console.log(`  - Primeira URL: ${urls[0]}`);
-    console.log(`  - Última URL: ${urls[urls.length - 1]}`);
+    logger.info(`\n📊 Resumo:`);
+    logger.info(`  - Total de URLs processadas: ${urls.length}`);
+    logger.info(`  - Primeira URL: ${urls[0]}`);
+    logger.info(`  - Última URL: ${urls[urls.length - 1]}`);
   } catch (error) {
-    console.error("❌ Erro ao processar arquivo:", error);
+    logger.error("❌ Erro ao processar arquivo:", error);
   }
 }
 

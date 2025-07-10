@@ -30,7 +30,7 @@ export async function openPage(
       ignoreHTTPSErrors: true,
       devtools: false,
       args: [
-        `--proxy-server=http://${PROXY.host}:${PROXY.port}`,
+        // `--proxy-server=http://${PROXY.host}:${PROXY.port}`,
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
@@ -43,17 +43,17 @@ export async function openPage(
       // slowMo: 50,
     });
 
-    logger("✅ Browser Puppeteer iniciado.");
+    logger.info("✅ Browser Puppeteer iniciado.");
   }
 
   const page = await browser.newPage();
-  await page.authenticate({
-    username: PROXY.username,
-    password: PROXY.password,
-  });
+  // await page.authenticate({
+  //   username: PROXY.username,
+  //   password: PROXY.password,
+  // });
 
   await page.setUserAgent(selectedUserAgent);
-  logger(`🎭 User-Agent usado: ${selectedUserAgent}`);
+  // logger.info(`🎭 User-Agent usado: ${selectedUserAgent}`);
 
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -76,7 +76,7 @@ export async function closeBrowser(): Promise<void> {
   if (browser) {
     await browser.close();
     browser = null;
-    logger("✅ Browser Puppeteer fechado.");
+    logger.info("✅ Browser Puppeteer fechado.");
   }
 }
 

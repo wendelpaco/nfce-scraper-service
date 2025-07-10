@@ -1,7 +1,7 @@
-/* eslint-disable no-console */
 import { Request, Response } from "express";
 import { scraperQueue } from "../jobs/queue";
 import prisma from "../utils/prisma";
+import { logger } from "../utils/logger";
 
 export async function cleanQueue(req: Request, res: Response) {
   try {
@@ -12,7 +12,7 @@ export async function cleanQueue(req: Request, res: Response) {
 
     res.json({ message: "✅ Fila limpa com sucesso!" });
   } catch (error) {
-    console.error("Erro ao limpar a fila:", error);
+    logger.error("Erro ao limpar a fila:", error);
     res.status(500).json({ error: "Erro ao limpar a fila." });
   }
 }

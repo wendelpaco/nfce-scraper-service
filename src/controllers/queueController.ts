@@ -1,9 +1,9 @@
-/* eslint-disable no-console */
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 import { normalizeNotaUrl } from "../utils";
 import { getScraperByCode } from "../scrapers/scraperRegistry";
 import { scraperQueue } from "../jobs/queue";
+import { logger } from "../utils/logger";
 
 interface NotaJsonData {
   metadata: {
@@ -11,6 +11,8 @@ interface NotaJsonData {
     serie?: unknown;
     dataEmissao?: unknown;
     protocoloAutorizacao?: unknown;
+    nomeEmpresa?: unknown;
+    cnpj?: unknown;
     items: unknown;
     totals: unknown;
   };
@@ -90,6 +92,8 @@ export async function getJobStatus(req: Request, res: Response): Promise<void> {
         serie: jsonData?.metadata?.serie,
         dataEmissao: jsonData?.metadata?.dataEmissao,
         protocoloAutorizacao: jsonData?.metadata?.protocoloAutorizacao,
+        nomeEmpresa: jsonData?.metadata?.nomeEmpresa,
+        cnpj: jsonData?.metadata?.cnpj,
         items: jsonData?.metadata?.items,
         totals: jsonData?.metadata?.totals,
       };
@@ -111,10 +115,18 @@ export async function getJobStatus(req: Request, res: Response): Promise<void> {
         urlQueue.notaResults.length > 0
           ? urlQueue.notaResults[0].urlQueueId
           : null,
+      // Campos de tempo de processamento
+      processingStartedAt: urlQueue.processingStartedAt,
+      processingEndedAt: urlQueue.processingEndedAt,
+      processingDurationMs:
+        urlQueue.processingStartedAt && urlQueue.processingEndedAt
+          ? urlQueue.processingEndedAt.getTime() -
+            urlQueue.processingStartedAt.getTime()
+          : null,
       metadata,
     });
   } catch (error) {
-    console.log(error);
+    logger.error(String(error));
     res.status(500).json({ error: "Erro ao buscar o job" });
   }
 }

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
+
 import { Request, Response, NextFunction } from "express";
 import prisma from "../utils/prisma";
+import { logger } from "../utils/logger";
 
 export const apiTokenAuthMiddleware = async (
   req: Request,
@@ -35,7 +36,7 @@ export const apiTokenAuthMiddleware = async (
 
     next();
   } catch (error) {
-    console.error("Erro no apiTokenAuthMiddleware:", error);
+    logger.error("Erro no apiTokenAuthMiddleware:", error);
     res.status(500).json({ error: "Erro interno de autenticação." });
   }
 };

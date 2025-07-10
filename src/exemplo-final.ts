@@ -3,6 +3,7 @@ import {
   formatLinesWithQuotes,
   formatLinesWithQuotesAndComma,
 } from "./utils";
+import { logger } from "./utils/logger";
 
 // Exemplo prático: como formatar URLs com aspas duplas
 
@@ -22,13 +23,13 @@ http://outro-exemplo.com?p=123456
 // 1. Filtrar linhas com ?p=
 console.log("1. Filtrando linhas com parâmetro ?p=:");
 const urlsFiltradas = filterLinesWithPParam(textoExemplo);
-console.log(`Encontradas ${urlsFiltradas.length} URLs válidas\n`);
+logger.info(`Encontradas ${urlsFiltradas.length} URLs válidas\n`);
 
 // 2. Formatar com aspas duplas e vírgula em todas as linhas
 console.log("2. Formatação com aspas duplas e vírgula (todas as linhas):");
 const urlsComVirgula = formatLinesWithQuotes(urlsFiltradas);
 urlsComVirgula.forEach((url, index) => {
-  console.log(`  ${index + 1}. ${url}`);
+  logger.info(`  ${index + 1}. ${url}`);
 });
 console.log("");
 
@@ -36,7 +37,7 @@ console.log("");
 console.log("3. Formatação para arrays JavaScript (última linha sem vírgula):");
 const urlsParaArray = formatLinesWithQuotesAndComma(urlsFiltradas);
 urlsParaArray.forEach((url, index) => {
-  console.log(`  ${index + 1}. ${url}`);
+  logger.info(`  ${index + 1}. ${url}`);
 });
 console.log("");
 
@@ -44,7 +45,7 @@ console.log("");
 console.log("4. Como usar em seu código:");
 console.log("const minhasUrls = [");
 urlsParaArray.forEach((url, index) => {
-  console.log(`  ${url}`);
+  logger.info(`  ${url}`);
 });
 console.log("];");
 console.log("");

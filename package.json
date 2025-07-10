@@ -7,17 +7,21 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "start": "node dist/server.js",
-    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "build": "rm -rf dist && tsc && cp .env dist/.env && cp -r prisma dist/prisma",
     "lint": "eslint 'src/**/*.ts' --fix",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "prettier": "prettier --write 'src/**/*.ts'",
     "release": "./release.sh",
     "worker": "ts-node src/workers/scraperWorker.ts",
     "stress": "ts-node src/scripts/job-stress-test.ts",
+    "stress-rj": "ts-node src/scripts/job-stress-test-rj.ts",
     "proxy:test": "ts-node src/utils/proxyTester.ts",
     "seed": "ts-node prisma/seed.ts",
-    "report": "ts-node src/reports/stats.ts"
+    "report": "ts-node src/reports/stats.ts",
+    "manage-jobs": "ts-node src/scripts/manage-jobs.ts",
+    "reprocess-blocked": "ts-node src/scripts/reprocess-blocked.ts",
+    "analyze-invalid": "ts-node src/scripts/clean-invalid.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.10.1",

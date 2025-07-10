@@ -1,4 +1,5 @@
 import { getScraperByCode } from "../scrapers/scraperRegistry";
+import { logger } from "../utils/logger";
 
 export function normalizeNotaUrl(inputUrl: string, stateCode: string): string {
   const scraper = getScraperByCode(stateCode);
@@ -49,7 +50,7 @@ export async function processFileWithPParam(
     const content = await fs.readFile(filePath, "utf-8");
     return filterLinesWithPParam(content);
   } catch (error) {
-    console.error("Erro ao processar arquivo:", error);
+    logger.error("Erro ao processar arquivo:", error);
     return [];
   }
 }
