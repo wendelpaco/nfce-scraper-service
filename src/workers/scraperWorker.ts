@@ -50,7 +50,7 @@ export const scraperWorker = new Worker(
     const urlQueueRecord = await prisma.urlQueue.findFirst({
       where: {
         id: jobId,
-        status: { in: ["PENDING", "ERROR", "BLOCKED", ""] },
+        status: { in: ["PENDING", "ERROR", "BLOCKED"] },
       },
     });
 
@@ -63,9 +63,10 @@ export const scraperWorker = new Worker(
 
     try {
       // Marca início do processamento
+      const now = new Date();
       await prisma.urlQueue.update({
         where: { id: jobId },
-        data: { processingStartedAt: new Date() },
+        data: { processingStartedAt: now },
       });
 
       const scraper = getScraperByCode(stateCode);
@@ -216,15 +217,9 @@ export const scraperWorker = new Worker(
 
       await page.close();
 
-      if (
-        !urlQueueRecord ||
-        !["PENDING", "BLOCKED"].includes(urlQueueRecord.status)
-      ) {
-        logger.warn(
-          `⚠️ Ignorando job ${job.id} com status não pendente ou inexistente.`,
-        );
-        return;
-      }
+      // CORREÇÃO: Removida a verificação que impedia retry
+      // A verificação anterior estava impedindo o retry quando o status era ERROR
+      // Agora o job pode ser reprocessado mesmo com status ERROR
 
       // Debug: verificar se os campos estão sendo capturados
       logger.debug(`[DEBUG] Dados do scraper para job ${job.id}:`, {
@@ -237,13 +232,6 @@ export const scraperWorker = new Worker(
         ...result.metadata,
         items: result.items,
         totals: result.totals,
-      };
-
-      const pushedData = {
-        status: "DONE",
-        url,
-        webhookUrl: urlQueueRecord?.webhookUrl || null,
-        metadata,
       };
 
       await prisma.notaResult.create({
@@ -263,6 +251,35 @@ export const scraperWorker = new Worker(
           processingEndedAt: new Date(),
         },
       });
+
+      // Busca os dados atualizados do urlQueue para incluir os timestamps
+      // (agora após definir o processingEndedAt)
+      const updatedUrlQueue = await prisma.urlQueue.findUnique({
+        where: { id: jobId },
+        include: { notaResults: true },
+      });
+
+      const pushedData = {
+        status: updatedUrlQueue?.status || "DONE",
+        id: updatedUrlQueue?.notaResults?.[0]?.id || null,
+        url: updatedUrlQueue?.notaResults?.[0]?.url || url,
+        webhookUrl:
+          updatedUrlQueue?.notaResults?.[0]?.webhookUrl ||
+          urlQueueRecord?.webhookUrl ||
+          null,
+        createdAt: updatedUrlQueue?.createdAt || null,
+        urlQueueId: updatedUrlQueue?.notaResults?.[0]?.urlQueueId || jobId,
+        // Campos de tempo de processamento
+        processingStartedAt: updatedUrlQueue?.processingStartedAt,
+        processingEndedAt: updatedUrlQueue?.processingEndedAt,
+        processingDurationMs:
+          updatedUrlQueue?.processingStartedAt &&
+          updatedUrlQueue?.processingEndedAt
+            ? updatedUrlQueue.processingEndedAt.getTime() -
+              updatedUrlQueue.processingStartedAt.getTime()
+            : null,
+        metadata,
+      };
 
       if (urlQueueRecord?.webhookUrl) {
         logger.info(
@@ -336,6 +353,19 @@ export const scraperWorker = new Worker(
 
       const finalStatus = classifyErrorOrContent(error, pageText);
 
+      // Garantir consistência dos timestamps
+      const urlQueueTimestamps = await prisma.urlQueue.findUnique({
+        where: { id: jobId },
+        select: { processingStartedAt: true },
+      });
+      const now = new Date();
+      let processingStartedAt = urlQueueTimestamps?.processingStartedAt;
+      let processingEndedAt = now;
+      if (!processingStartedAt || processingStartedAt > now) {
+        processingStartedAt = now;
+        processingEndedAt = now;
+      }
+
       await prisma.urlQueue.update({
         where: { id: jobId },
         data: {
@@ -344,9 +374,75 @@ export const scraperWorker = new Worker(
             error instanceof Error
               ? `${pageText} - ${error.message}`
               : `${pageText} - ${String(error)}`,
-          processingEndedAt: new Date(),
+          processingStartedAt,
+          processingEndedAt,
         },
       });
+
+      // Busca os dados atualizados do urlQueue para incluir os timestamps no erro
+      // (agora após definir o processingEndedAt)
+      const updatedUrlQueue = await prisma.urlQueue.findUnique({
+        where: { id: jobId },
+        include: { notaResults: true },
+      });
+
+      // Log de debug para investigar urlQueueId
+      logger.error("DEBUG urlQueueId:", {
+        jobId,
+        updatedUrlQueueId: updatedUrlQueue?.id,
+        notaResultUrlQueueId: updatedUrlQueue?.notaResults?.[0]?.urlQueueId,
+      });
+
+      // Cria um objeto de erro com os dados de tempo de processamento
+      const errorData = {
+        status: updatedUrlQueue?.status || finalStatus,
+        id: updatedUrlQueue?.notaResults?.[0]?.id || null,
+        url:
+          updatedUrlQueue?.notaResults?.[0]?.url || updatedUrlQueue?.url || url,
+        webhookUrl:
+          updatedUrlQueue?.notaResults?.[0]?.webhookUrl ||
+          updatedUrlQueue?.webhookUrl ||
+          urlQueueRecord?.webhookUrl ||
+          null,
+        createdAt: updatedUrlQueue?.createdAt || null,
+        urlQueueId:
+          updatedUrlQueue?.notaResults?.[0]?.urlQueueId ||
+          updatedUrlQueue?.id ||
+          jobId,
+        // Campos de tempo de processamento
+        processingStartedAt: updatedUrlQueue?.processingStartedAt,
+        processingEndedAt: updatedUrlQueue?.processingEndedAt,
+        processingDurationMs:
+          updatedUrlQueue?.processingStartedAt &&
+          updatedUrlQueue?.processingEndedAt
+            ? updatedUrlQueue.processingEndedAt.getTime() -
+              updatedUrlQueue.processingStartedAt.getTime()
+            : null,
+        metadata: null, // No caso de erro, metadata é null
+        error: error instanceof Error ? error.message : String(error),
+        lastErrorMessage: `${pageText} - ${error instanceof Error ? error.message : String(error)}`,
+      };
+
+      // Se houver webhook, envia os dados de erro com timestamps
+      if (urlQueueRecord?.webhookUrl) {
+        logger.info(
+          `🚀 Tentando enviar webhook de erro para: ${urlQueueRecord.webhookUrl}`,
+        );
+        try {
+          const response = await axios.post(
+            urlQueueRecord.webhookUrl!,
+            errorData,
+          );
+          logger.info(
+            `✅ Webhook de erro enviado com sucesso! Status: ${response.status}`,
+          );
+        } catch (err) {
+          logger.error(
+            `❌ Falha ao enviar webhook de erro para: ${urlQueueRecord.webhookUrl}`,
+            err,
+          );
+        }
+      }
 
       // Fecha páginas abertas muito antigas para liberar memória
       try {
