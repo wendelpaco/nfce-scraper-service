@@ -4,7 +4,7 @@ import prisma from "../utils/prisma";
 import { openPage, getAllPages } from "../utils/browserInstance";
 import { solvePageCaptchas } from "../core/solveRecaptchas";
 import { EventEmitter } from "events";
-import { captchaQueue, redisConfig } from "../jobs/queue";
+import { redisConfig } from "../jobs/queue";
 import { logger } from "../utils/logger";
 import axios from "axios";
 import { TargetWithCreationTime } from "../types/browser";
@@ -46,6 +46,14 @@ export const scraperWorker = new Worker(
   "scraperQueue",
   async (job) => {
     const { url, stateCode, jobId } = job.data;
+
+    // Validação: garantir que jobId está definido
+    if (!jobId) {
+      logger.error("jobId está undefined! Dados do job:", job.data);
+      throw new Error(
+        "jobId está undefined! Não é possível processar este job.",
+      );
+    }
 
     const urlQueueRecord = await prisma.urlQueue.findFirst({
       where: {
@@ -305,7 +313,7 @@ export const scraperWorker = new Worker(
 
       return pushedData;
     } catch (error) {
-      logger.error(`❌ Job ${job.id} falhou:`, error);
+      logger.error(`❌ Job ${job.id} falhou:`);
 
       // Tenta avaliar se o erro indica bloqueio temporário ou definitivo
       let pageText = "";
