@@ -3,10 +3,10 @@ import { logger } from "../utils/logger";
 
 // Configuração explícita de conexão com Redis
 export const redisConfig: RedisOptions = {
-  host: "31.97.19.138",
+  host: "localhost",
   port: 6379,
-  username: "default",
-  password: "senharedis",
+  // username: "default",
+  // password: "senharedis",
 };
 
 export const scraperQueue = new Queue("scraperQueue", {
