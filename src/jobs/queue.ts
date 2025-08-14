@@ -3,8 +3,8 @@ import { logger } from "../utils/logger";
 
 // Configuração explícita de conexão com Redis
 export const redisConfig: RedisOptions = {
-  host: "localhost",
-  port: 6379,
+  host: "74.249.2.22",
+  port: 56379,
   // username: "default",
   // password: "senharedis",
 };
