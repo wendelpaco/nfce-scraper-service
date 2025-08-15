@@ -25,8 +25,8 @@ export async function openPage(
 
   if (!browser) {
     browser = await puppeteer.launch({
-      headless: "new",
-      // headless: false,
+      // headless: "new",
+      headless: false,
       ignoreHTTPSErrors: true,
       devtools: false,
       args: [
