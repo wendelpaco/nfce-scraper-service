@@ -143,8 +143,8 @@ export async function createQueueJob(req: Request, res: Response) {
       webhookUrl: webhookUrl || null,
     },
     {
-      delay: 25000, // 25 segundos de delay inicial
-      attempts: 5, // 5 tentativas
+      delay: 50000, // 50 segundos de delay inicial
+      attempts: 20, // 20 tentativas
       backoff: {
         type: "exponential", // Backoff exponencial
         delay: 10000, // 10 segundos base

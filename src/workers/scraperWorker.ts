@@ -9,7 +9,7 @@ import { logger } from "../utils/logger";
 import axios from "axios";
 import { TargetWithCreationTime } from "../types/browser";
 
-EventEmitter.defaultMaxListeners = 50;
+EventEmitter.defaultMaxListeners = 10;
 
 type JobStatus = "DONE" | "INVALID" | "BLOCKED" | "ERROR";
 
@@ -157,48 +157,6 @@ export const scraperWorker = new Worker(
           throw new Error("Elemento #tabResult tr não encontrado na página.");
         }
       }
-
-      // if (preCheckStatus === "INVALID") {
-      //   const lowerText = pageText.toLowerCase();
-
-      //   // Se for erro que exige resolver captcha, encaminha para captchaQueue
-      //   if (
-      //     lowerText.includes("não foi possível validar o acesso") ||
-      //     lowerText.includes("erro no captcha")
-      //   ) {
-      //     logger.info(`➡️ Redirecionando job ${job.id} para fila de CAPTCHA.`);
-
-      //     await captchaQueue.add("captchaSolver", {
-      //       url,
-      //       jobId,
-      //       originalStateCode: stateCode,
-      //     });
-
-      //     await prisma.urlQueue.update({
-      //       where: { id: jobId },
-      //       data: {
-      //         status: "WAITING_CAPTCHA",
-      //         lastErrorMessage: `${pageText} - Aguardando resolução alternativa via CAPTCHA.`,
-      //       },
-      //     });
-
-      //     await page.close();
-      //     return;
-      //   }
-
-      //   logger.warn(
-      //     `🚫 Conteúdo inválido detectado para job ${job.id}. Tentando novamente até esgotar tentativas.`,
-      //   );
-      //   await prisma.urlQueue.update({
-      //     where: { id: jobId },
-      //     data: {
-      //       // Não atualize o status para INVALID aqui!
-      //       lastErrorMessage: `${pageText} - Conteúdo inválido detectado na página.`,
-      //     },
-      //   });
-      //   await page.close();
-      //   throw new Error("Conteúdo inválido detectado na página."); // Permite retry automático
-      // }
 
       if (preCheckStatus === "BLOCKED") {
         logger.warn(
