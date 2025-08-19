@@ -353,11 +353,11 @@ export const scraperWorker = new Worker(
       });
 
       // Log de debug para investigar urlQueueId
-      logger.error("DEBUG urlQueueId:", {
-        jobId,
-        updatedUrlQueueId: updatedUrlQueue?.id,
-        notaResultUrlQueueId: updatedUrlQueue?.notaResults?.[0]?.urlQueueId,
-      });
+      // logger.error("DEBUG urlQueueId:", {
+      //   jobId,
+      //   updatedUrlQueueId: updatedUrlQueue?.id,
+      //   notaResultUrlQueueId: updatedUrlQueue?.notaResults?.[0]?.urlQueueId,
+      // });
 
       // Cria um objeto de erro com os dados de tempo de processamento
       const errorData = {
